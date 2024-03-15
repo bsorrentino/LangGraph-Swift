@@ -3,19 +3,21 @@
 	archiveVersion = 1;
 	classes = {
 	};
-	objectVersion = 56;
+	objectVersion = 60;
 	objects = {
 
 /* Begin PBXBuildFile section */
+		A04EAC2B2BA441B500C49DC0 /* AgentExecutor.swift in Sources */ = {isa = PBXBuildFile; fileRef = A04EAC2A2BA441B500C49DC0 /* AgentExecutor.swift */; };
+		A04EAC2E2BA4572E00C49DC0 /* LangChain in Frameworks */ = {isa = PBXBuildFile; productRef = A04EAC2D2BA4572E00C49DC0 /* LangChain */; };
 		A08CC7552BA373E9007A8248 /* LangChainDemoApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = A08CC7542BA373E9007A8248 /* LangChainDemoApp.swift */; };
 		A08CC7572BA373E9007A8248 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A08CC7562BA373E9007A8248 /* ContentView.swift */; };
 		A08CC7592BA373EA007A8248 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = A08CC7582BA373EA007A8248 /* Assets.xcassets */; };
 		A08CC75C2BA373EA007A8248 /* Preview Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = A08CC75B2BA373EA007A8248 /* Preview Assets.xcassets */; };
 		A08CC7652BA37494007A8248 /* LangGraph in Frameworks */ = {isa = PBXBuildFile; productRef = A08CC7642BA37494007A8248 /* LangGraph */; };
-		A08CC7682BA3772E007A8248 /* LangChain in Frameworks */ = {isa = PBXBuildFile; productRef = A08CC7672BA3772E007A8248 /* LangChain */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+		A04EAC2A2BA441B500C49DC0 /* AgentExecutor.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = AgentExecutor.swift; sourceTree = "<group>"; };
 		A08CC7512BA373E9007A8248 /* LangChainDemo.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = LangChainDemo.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		A08CC7542BA373E9007A8248 /* LangChainDemoApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LangChainDemoApp.swift; sourceTree = "<group>"; };
 		A08CC7562BA373E9007A8248 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
@@ -29,7 +31,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				A08CC7682BA3772E007A8248 /* LangChain in Frameworks */,
+				A04EAC2E2BA4572E00C49DC0 /* LangChain in Frameworks */,
 				A08CC7652BA37494007A8248 /* LangGraph in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -57,6 +59,7 @@
 		A08CC7532BA373E9007A8248 /* LangChainDemo */ = {
 			isa = PBXGroup;
 			children = (
+				A04EAC2A2BA441B500C49DC0 /* AgentExecutor.swift */,
 				A08CC7542BA373E9007A8248 /* LangChainDemoApp.swift */,
 				A08CC7562BA373E9007A8248 /* ContentView.swift */,
 				A08CC7582BA373EA007A8248 /* Assets.xcassets */,
@@ -99,7 +102,7 @@
 			name = LangChainDemo;
 			packageProductDependencies = (
 				A08CC7642BA37494007A8248 /* LangGraph */,
-				A08CC7672BA3772E007A8248 /* LangChain */,
+				A04EAC2D2BA4572E00C49DC0 /* LangChain */,
 			);
 			productName = LangChainDemo;
 			productReference = A08CC7512BA373E9007A8248 /* LangChainDemo.app */;
@@ -130,7 +133,7 @@
 			);
 			mainGroup = A08CC7482BA373E9007A8248;
 			packageReferences = (
-				A08CC7662BA3772E007A8248 /* XCRemoteSwiftPackageReference "langchain-swift" */,
+				A04EAC2C2BA4572E00C49DC0 /* XCLocalSwiftPackageReference "../../langchain-swift" */,
 			);
 			productRefGroup = A08CC7522BA373E9007A8248 /* Products */;
 			projectDirPath = "";
@@ -160,6 +163,7 @@
 			files = (
 				A08CC7572BA373E9007A8248 /* ContentView.swift in Sources */,
 				A08CC7552BA373E9007A8248 /* LangChainDemoApp.swift in Sources */,
+				A04EAC2B2BA441B500C49DC0 /* AgentExecutor.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -366,26 +370,21 @@
 		};
 /* End XCConfigurationList section */
 
-/* Begin XCRemoteSwiftPackageReference section */
-		A08CC7662BA3772E007A8248 /* XCRemoteSwiftPackageReference "langchain-swift" */ = {
-			isa = XCRemoteSwiftPackageReference;
-			repositoryURL = "https://github.com/buhe/langchain-swift.git";
-			requirement = {
-				kind = upToNextMajorVersion;
-				minimumVersion = 0.48.0;
-			};
+/* Begin XCLocalSwiftPackageReference section */
+		A04EAC2C2BA4572E00C49DC0 /* XCLocalSwiftPackageReference "../../langchain-swift" */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = "../../langchain-swift";
 		};
-/* End XCRemoteSwiftPackageReference section */
+/* End XCLocalSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
+		A04EAC2D2BA4572E00C49DC0 /* LangChain */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = LangChain;
+		};
 		A08CC7642BA37494007A8248 /* LangGraph */ = {
 			isa = XCSwiftPackageProductDependency;
 			productName = LangGraph;
-		};
-		A08CC7672BA3772E007A8248 /* LangChain */ = {
-			isa = XCSwiftPackageProductDependency;
-			package = A08CC7662BA3772E007A8248 /* XCRemoteSwiftPackageReference "langchain-swift" */;
-			productName = LangChain;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};

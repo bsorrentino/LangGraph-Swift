@@ -1,5 +1,5 @@
 {
-  "originHash" : "9f967c268a37c7ace07b0924d8a430e8dca22c0e207c303bb411a059e4ad9863",
+  "originHash" : "b47df776245fa51fa189bff68b7fac0f33c7b9ada1ab0403cc1479ad43538ee3",
   "pins" : [
     {
       "identity" : "async-http-client",
@@ -71,15 +71,6 @@
       "state" : {
         "revision" : "84e546727d66f1adc5439debad16270d0fdd04e7",
         "version" : "4.2.2"
-      }
-    },
-    {
-      "identity" : "langchain-swift",
-      "kind" : "remoteSourceControl",
-      "location" : "https://github.com/buhe/langchain-swift.git",
-      "state" : {
-        "revision" : "d2c945cfbb0b1b9bc571dc5121fbaa264bb42bd6",
-        "version" : "0.48.0"
       }
     },
     {
