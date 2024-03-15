@@ -5,15 +5,44 @@ public typealias PartialAgentState = [String: Any]
 public typealias NodeAction<Action: AgentState> = ( Action ) async throws -> PartialAgentState
 public typealias EdgeCondition<Action: AgentState> = ( Action ) async throws -> String
 
+public struct AppendableValue {
+    var array: [Any]
+    
+    mutating func append( values: [Any] ) {
+        array.append(contentsOf: values)
+    }
+    mutating func append( value: Any ) {
+        array.append(value)
+    }
+    
+    public init() {
+        array = []
+    }
+
+    public init( values: [Any] ) {
+        array = values
+    }
+}
+
 public protocol AgentState {
     
-    var data: [String: Any] { get }
+    var data: [String: Any] { get set }
     
 //    subscript(key: String) -> Any? { get }
     
-    init()
     init( _ initState: [String: Any] )
+    init()
+}
+
+extension AgentState {
     
+    public func value<T>( _ key: String ) -> T? {
+        return data[ key ] as? T
+    }
+                
+    public func appendableValue<T>( _ key: String ) -> [T]? {
+        return (data[ key ] as? AppendableValue)?.array as? [T]
+    }
 }
 
 public struct BaseAgentState : AgentState {
@@ -139,8 +168,19 @@ public class GraphState<State: AgentState>  {
             if partialState.isEmpty {
                 return currentState
             }
-            let newState = currentState.data.merging(partialState, uniquingKeysWith: { (current, _) in
-                return current
+            let newState = currentState.data.merging(partialState, uniquingKeysWith: { 
+                (current, new) in
+                
+                if var appender = current as? AppendableValue {
+                    if let newValue = new as? [Any] {
+                        appender.append(values: newValue)
+                    }
+                    else {
+                        appender.append(value: new)
+                    }
+                    return appender
+                }
+                return new
             })
             return State.init(newState)
         }
@@ -167,7 +207,7 @@ public class GraphState<State: AgentState>  {
         
         public func invoke( inputs: PartialAgentState, verbose:Bool = false ) async throws -> State {
             
-            var currentState = self.stateType.init( inputs )
+            var currentState = mergeState( currentState: self.stateType.init(), partialState: inputs)
             var currentNodeId = entryPoint
             
             repeat {
