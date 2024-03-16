@@ -10,16 +10,39 @@ import XCTest
 final class LangGraphTests: XCTestCase {
     
 
+    func compareAsEquatable(_ value: Any, _ expectedValue: Any) -> Bool {
+        if let value1 = value as? Int, let value2 = expectedValue as? Int {
+            return value1 == value2
+        }
+        if let value1 = value as? String, let value2 = expectedValue as? String {
+            return value1 == value2
+        }
+        if let values2 = expectedValue as? [Any] {
+            if let values1 = value as? [Any] {
+                if values1.count == values2.count {
+                    for ( v1, v2) in zip(values1, values2) {
+                        return compareAsEquatable( v1, v2 )
+                    }
+                }
+            }
+            if let value1 = value as? AppendableValue {
+                if value1.array.count == values2.count {
+                    for ( v1, v2) in zip(value1.array, values2) {
+                        return compareAsEquatable( v1, v2 )
+                    }
+                }
+
+            }
+        }
+        return false
+    }
+    
     func assertDictionaryOfAnyEqual( _ expected: [String:Any], _ current: [String:Any] ) {
         XCTAssertEqual(current.count, expected.count, "the dictionaries have different size")
         for (key, value) in current {
             
-            if let value1 = value as? Int, let value2 = expected[key] as? Int {
-                XCTAssertTrue( value1 == value2 )
-            }
-            if let value1 = value as? String, let value2 = expected[key] as? String {
-                XCTAssertTrue( value1 == value2 )
-            }
+            XCTAssertTrue( compareAsEquatable(value, expected[key]!) )
+            
         }
 
     }
@@ -253,6 +276,54 @@ final class LangGraphTests: XCTestCase {
         assertDictionaryOfAnyEqual(["op": "sum", "add1": 37, "add2": 10, "result": 47 ], resultAdd.data)
     }
 
-    
+    struct AgentStateWithAppender : AgentState {
+        var data: [String : Any]
+        
+        init() {
+            self.init( ["messages": AppendableValue()] )
+        }
+        
+        init(_ initState: [String : Any]) {
+            data = initState
+        }
+        var messages:[String]? {
+           appendableValue("messages")
+        }
+    }
+
+    func testAppender() async throws {
+            
+        let workflow = GraphState( stateType: AgentStateWithAppender.self )
+        
+        try workflow.addNode("agent_1") { state in
+            
+            print( "agent_1", state )
+            return ["messages": "message1"]
+        }
+        try workflow.addNode("agent_2") { state in
+            
+            print( "agent_2", state )
+            return ["messages": ["message2", "message3"] ]
+        }
+        try workflow.addNode("agent_3") { state in
+            print( "agent_3", state )
+            return ["result": state.messages?.count ?? 0]
+        }
+
+        try workflow.addEdge(sourceId: "agent_1", targetId: "agent_2")
+        try workflow.addEdge(sourceId: "agent_2", targetId: "agent_3")
+
+        try workflow.setEntryPoint("agent_1")
+        workflow.setFinishPoint("agent_3")
+
+        let app = try workflow.compile()
+        
+        let result = try await app.invoke(inputs: [ : ] )
+        
+        print( result.data )
+        assertDictionaryOfAnyEqual( ["messages": [ "message1", "message2", "message3"], "result":  3 ], result.data )
+
+    }
+
     
 }
