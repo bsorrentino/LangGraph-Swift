@@ -22,7 +22,7 @@ Finally, add `import LangGraph` to your source code.
 
 ## Integrate with LangChain for Swift
 
-In the [LangChainDemo] project, you can find the porting of [AgentExecutor] from [LangChain Swift project][langchain.ai] using LangGraph. Below you can find a piece of code of the `AgentExecutor` to give you an idea of how to use it.
+In the [LangChainDemo](LangChainDemo) project, you can find the porting of [AgentExecutor] from [LangChain Swift project][langchain.ai] using LangGraph. Below you can find a piece of code of the `AgentExecutor` to give you an idea of how to use it.
 
 
 ```Swift
