@@ -20,7 +20,7 @@ class Callback : BaseCallbackHandler {
 
 struct ContentView: View {
     
-    @State var openai_api_key: String = "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"
+    @State var openai_api_key: String = ""
     @State var input:String = "perform a test call"
     @State var progress: String = ""
     
