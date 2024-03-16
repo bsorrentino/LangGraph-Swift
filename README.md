@@ -14,7 +14,7 @@ Include `LangGraph` as a dependency for your executable target:
 
 ```Swift
 .target(name: "<target>", dependencies: [
-    .product(name: "AsyncAlgorithms", package: "swift-async-algorithms"),
+    .product(name: "LangGraph", package: "LangGraph-Swift"),
 ]),
 ```
 
