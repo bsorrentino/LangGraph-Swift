@@ -128,4 +128,4 @@ In the [LangChainDemo](LangChainDemo) project, you can find the porting of [Agen
 [langchain-swift]: https://github.com/buhe/langchain-swift.git
 [langchain.ai]: https://github.com/langchain-ai
 [langgraph]: https://github.com/langchain-ai/langgraph
-[AgentExecutor]: https://github.com/bsorrentino/langchain-swift/blob/main/Sources/LangChain/agents/Agent.swift
+[AgentExecutor]: https://github.com/buhe/langchain-swift/blob/main/Sources/LangChain/agents/Agent.swift
