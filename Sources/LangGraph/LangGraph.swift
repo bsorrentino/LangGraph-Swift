@@ -26,16 +26,15 @@ public struct AppendableValue {
 
 public protocol AgentState {
     
-    var data: [String: Any] { get set }
+    var data: [String: Any] { get }
     
 //    subscript(key: String) -> Any? { get }
     
     init( _ initState: [String: Any] )
-    init()
 }
 
 extension AgentState {
-    
+
     public func value<T>( _ key: String ) -> T? {
         return data[ key ] as? T
     }
@@ -133,15 +132,14 @@ let log = Logger( subsystem: Bundle.module.bundleIdentifier ?? "langgraph", cate
 
 public class GraphState<State: AgentState>  {
     
-    enum EdgeValue /* Either */ {
+    enum EdgeValue /* Union */ {
         case id(String)
         case condition( ( EdgeCondition<State>, [String:String] ) )
     }
     
     public class Runner {
-        
-        
-        var stateType: State.Type
+    
+        var stateFactory: () -> State
         var nodes:Dictionary<String, NodeAction<State>>
         var edges:Dictionary<String, EdgeValue>
         var entryPoint:String
@@ -149,7 +147,7 @@ public class GraphState<State: AgentState>  {
 
         init( owner: GraphState ) {
             
-            self.stateType = owner.stateType
+            self.stateFactory = owner.stateFactory
             self.nodes = Dictionary()
             self.edges = Dictionary()
             self.entryPoint = owner.entryPoint!
@@ -207,7 +205,7 @@ public class GraphState<State: AgentState>  {
         
         public func invoke( inputs: PartialAgentState, verbose:Bool = false ) async throws -> State {
             
-            var currentState = mergeState( currentState: self.stateType.init(), partialState: inputs)
+            var currentState = mergeState( currentState: self.stateFactory(), partialState: inputs)
             var currentNodeId = entryPoint
             
             repeat {
@@ -273,10 +271,10 @@ public class GraphState<State: AgentState>  {
     private var entryPoint: String?
     private var finishPoint: String?
 
-    private var stateType: State.Type
+    private var stateFactory: () -> State
     
-    public init( stateType: State.Type ) {
-        self.stateType = stateType
+    public init( stateFactory: @escaping () -> State ) {
+        self.stateFactory = stateFactory
         
     }
     
