@@ -49,8 +49,8 @@ extension AgentState {
 }
 
 public struct NodeOutput<State: AgentState> {
-    var node: String
-    var state: State
+    public var node: String
+    public var state: State
     
     public init(node: String, state: State) {
         self.node = node

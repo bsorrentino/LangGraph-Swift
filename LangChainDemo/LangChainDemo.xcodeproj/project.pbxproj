@@ -8,12 +8,12 @@
 
 /* Begin PBXBuildFile section */
 		A04EAC2B2BA441B500C49DC0 /* AgentExecutor.swift in Sources */ = {isa = PBXBuildFile; fileRef = A04EAC2A2BA441B500C49DC0 /* AgentExecutor.swift */; };
-		A04EAC2E2BA4572E00C49DC0 /* LangChain in Frameworks */ = {isa = PBXBuildFile; productRef = A04EAC2D2BA4572E00C49DC0 /* LangChain */; };
 		A08CC7552BA373E9007A8248 /* LangChainDemoApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = A08CC7542BA373E9007A8248 /* LangChainDemoApp.swift */; };
 		A08CC7572BA373E9007A8248 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A08CC7562BA373E9007A8248 /* ContentView.swift */; };
 		A08CC7592BA373EA007A8248 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = A08CC7582BA373EA007A8248 /* Assets.xcassets */; };
 		A08CC75C2BA373EA007A8248 /* Preview Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = A08CC75B2BA373EA007A8248 /* Preview Assets.xcassets */; };
-		A08CC7652BA37494007A8248 /* LangGraph in Frameworks */ = {isa = PBXBuildFile; productRef = A08CC7642BA37494007A8248 /* LangGraph */; };
+		A0D23D862BA718D400CFF615 /* LangGraph in Frameworks */ = {isa = PBXBuildFile; productRef = A0D23D852BA718D400CFF615 /* LangGraph */; };
+		A0E162E22BA7187800AC563D /* LangChain in Frameworks */ = {isa = PBXBuildFile; productRef = A0E162E12BA7187800AC563D /* LangChain */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -31,8 +31,8 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				A04EAC2E2BA4572E00C49DC0 /* LangChain in Frameworks */,
-				A08CC7652BA37494007A8248 /* LangGraph in Frameworks */,
+				A0E162E22BA7187800AC563D /* LangChain in Frameworks */,
+				A0D23D862BA718D400CFF615 /* LangGraph in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -101,8 +101,8 @@
 			);
 			name = LangChainDemo;
 			packageProductDependencies = (
-				A08CC7642BA37494007A8248 /* LangGraph */,
-				A04EAC2D2BA4572E00C49DC0 /* LangChain */,
+				A0E162E12BA7187800AC563D /* LangChain */,
+				A0D23D852BA718D400CFF615 /* LangGraph */,
 			);
 			productName = LangChainDemo;
 			productReference = A08CC7512BA373E9007A8248 /* LangChainDemo.app */;
@@ -378,13 +378,13 @@
 /* End XCLocalSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
-		A04EAC2D2BA4572E00C49DC0 /* LangChain */ = {
-			isa = XCSwiftPackageProductDependency;
-			productName = LangChain;
-		};
-		A08CC7642BA37494007A8248 /* LangGraph */ = {
+		A0D23D852BA718D400CFF615 /* LangGraph */ = {
 			isa = XCSwiftPackageProductDependency;
 			productName = LangGraph;
+		};
+		A0E162E12BA7187800AC563D /* LangChain */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = LangChain;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};
