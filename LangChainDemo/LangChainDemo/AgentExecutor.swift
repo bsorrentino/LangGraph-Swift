@@ -235,7 +235,11 @@ public func runAgent( input: String, llm: LLM, tools: [BaseTool], callbacks: [Ba
     
     let runner = try workflow.compile()
     
-    let result = try await runner.invoke(inputs: [ "input": input, "chat_history": [] ])
-    
-    print( result )
+    for try await result in runner.stream(inputs: [ "input": input, "chat_history": [] ]) {
+        print( "-------------")
+        print( "Agent Output of \(result.node)" )
+        print( result.state )
+    }
+    print( "-------------")
+
 }
