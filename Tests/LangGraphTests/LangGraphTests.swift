@@ -48,7 +48,7 @@ final class LangGraphTests: XCTestCase {
     }
     func testValidation() async throws {
             
-        let workflow = GraphState( stateType: BaseAgentState.self )
+        let workflow = GraphState { BaseAgentState() }
         
         XCTAssertThrowsError( try workflow.compile() ) {error in 
             print( error )
@@ -128,7 +128,7 @@ final class LangGraphTests: XCTestCase {
 
     func testRunningOneNode() async throws {
             
-        let workflow = GraphState( stateType: BaseAgentState.self )
+        let workflow = GraphState { BaseAgentState() }
         try workflow.setEntryPoint("agent_1")
         try workflow.addNode("agent_1") { state in
             
@@ -171,7 +171,7 @@ final class LangGraphTests: XCTestCase {
 
     func testRunningTreeNodes() async throws {
             
-        let workflow = GraphState( stateType: BinaryOpState.self )
+        let workflow = GraphState { BinaryOpState() }
         
         try workflow.addNode("agent_1") { state in
             
@@ -209,7 +209,7 @@ final class LangGraphTests: XCTestCase {
 
     func testRunningFourNodesWithCondition() async throws {
             
-        let workflow = GraphState( stateType: BinaryOpState.self )
+        let workflow = GraphState { BinaryOpState() }
         
         try workflow.addNode("agent_1") { state in
             
@@ -293,7 +293,7 @@ final class LangGraphTests: XCTestCase {
 
     func testAppender() async throws {
             
-        let workflow = GraphState( stateType: AgentStateWithAppender.self )
+        let workflow = GraphState { AgentStateWithAppender() }
         
         try workflow.addNode("agent_1") { state in
             
@@ -325,5 +325,40 @@ final class LangGraphTests: XCTestCase {
 
     }
 
-    
+    func testWithStream() async throws {
+            
+        let workflow = GraphState { AgentStateWithAppender() }
+        
+        try workflow.addNode("agent_1") { state in
+            ["messages": "message1"]
+        }
+        try workflow.addNode("agent_2") { state in
+            ["messages": ["message2", "message3"] ]
+        }
+        try workflow.addNode("agent_3") { state in
+            ["result": state.messages?.count ?? 0]
+        }
+
+        try workflow.addEdge(sourceId: "agent_1", targetId: "agent_2")
+        try workflow.addEdge(sourceId: "agent_2", targetId: "agent_3")
+
+        try workflow.setEntryPoint("agent_1")
+        workflow.setFinishPoint("agent_3")
+
+        let app = try workflow.compile()
+                
+        let nodesInvolved =
+            try await app.stream(inputs: [:] ).reduce([] as [String]) { partialResult, output in
+                                    
+                    print( "-------------")
+                    print( "Agent Output of \(output.node)" )
+                    print( output.state )
+                    print( "-------------")
+
+                    return partialResult + [output.node ]
+            }
+        
+        XCTAssertEqual( ["agent_1", "agent_2", "agent_3"], nodesInvolved)
+    }
+
 }
