@@ -5,6 +5,10 @@ public typealias PartialAgentState = [String: Any]
 public typealias NodeAction<Action: AgentState> = ( Action ) async throws -> PartialAgentState
 public typealias EdgeCondition<Action: AgentState> = ( Action ) async throws -> String
 
+struct RunnableConfig {
+    
+}
+
 public struct AppendableValue {
     var array: [Any]
     
@@ -43,6 +47,17 @@ extension AgentState {
         return (data[ key ] as? AppendableValue)?.array as? [T]
     }
 }
+
+public struct NodeOutput<State: AgentState> {
+    var node: String
+    var state: State
+    
+    public init(node: String, state: State) {
+        self.node = node
+        self.state = state
+    }
+}
+
 
 public struct BaseAgentState : AgentState {
     
@@ -203,35 +218,60 @@ public class GraphState<State: AgentState>  {
             }
         }
         
+        public func stream( inputs: PartialAgentState, verbose:Bool = false ) -> AsyncThrowingStream<NodeOutput<State>, Error> {
+            
+            let (stream, continuation) = AsyncThrowingStream.makeStream(of: NodeOutput<State>.self, throwing: Error.self)
+            
+            Task {
+                var currentState = mergeState( currentState: self.stateFactory(), partialState: inputs)
+                var currentNodeId = entryPoint
+                
+                do {
+                
+                    repeat {
+                        
+                        guard let action = nodes[currentNodeId] else {
+                            continuation.finish(throwing: GraphRunnerError.missingNode("node: \(currentNodeId) not found!") )
+                            break
+                        }
+                        
+                        if( verbose ) {
+                            log.debug("start processing node \(currentNodeId)")
+                        }
+                        let partialState = try await action( currentState )
+                                                 
+                        currentState = mergeState( currentState: currentState, partialState: partialState)
+                        
+                        let output = NodeOutput(node: currentNodeId,state: currentState)
+                        
+                        continuation.yield( output )
+
+                        if( currentNodeId == finishPoint ) {
+                            break
+                        }
+                        
+                        currentNodeId = try await nextNodeId(nodeId: currentNodeId, agentState: currentState)
+                        
+                    } while( currentNodeId != END )
+                    
+                    continuation.finish()
+                }
+                catch {
+                    continuation.finish(throwing: error)
+                }
+            }
+            
+            return stream
+        }
+        
         public func invoke( inputs: PartialAgentState, verbose:Bool = false ) async throws -> State {
             
-            var currentState = mergeState( currentState: self.stateFactory(), partialState: inputs)
-            var currentNodeId = entryPoint
-            
-            repeat {
-                
-                guard let action = nodes[currentNodeId] else {
-                    throw GraphRunnerError.missingNode("node: \(currentNodeId) not found!")
-                }
-
-                if( verbose ) {
-                    log.debug("start processing node \(currentNodeId)")
-                }
-                let partialState = try await action( currentState )
-                
-                currentState = mergeState( currentState: currentState, partialState: partialState)
-                
-                if( currentNodeId == finishPoint ) {
-                    break
-                }
-
-                currentNodeId = try await nextNodeId(nodeId: currentNodeId, agentState: currentState)
-
-            } while( currentNodeId != END )
-            
-            return currentState
+            var result:State?
+            for try await output in stream(inputs: inputs) {
+                result = output.state
+            }
+            return result!
         }
-
     }
 
     struct Edge : Hashable, Identifiable{
