@@ -388,19 +388,19 @@ public class GraphState<State: AgentState>  {
         for edge in edges {
             
             guard nodes.contains( makeFakeNode(edge.sourceId) ) else {
-                throw GraphStateError.missingNodeReferencedByEdge( "edge sourceId: \(edge.sourceId) reference a not existent node!")
+                throw GraphStateError.missingNodeReferencedByEdge( "edge sourceId: \(edge.sourceId) reference to non existent node!")
             }
 
             switch( edge.target ) {
             case .id( let targetId ):
                 guard targetId==END || nodes.contains(makeFakeNode(targetId) ) else {
-                    throw GraphStateError.missingNodeReferencedByEdge( "edge sourceId: \(edge.sourceId)  reference a not existent targetId: \(targetId) node!")
+                    throw GraphStateError.missingNodeReferencedByEdge( "edge sourceId: \(edge.sourceId)  reference to non existent node targetId: \(targetId) node!")
                 }
                 break
             case .condition((_, let edgeMappings)):
                 for (_,nodeId) in edgeMappings {
                     guard nodeId==END || nodes.contains(makeFakeNode(nodeId) ) else {
-                        throw GraphStateError.missingNodeInEdgeMapping( "edge mapping for sourceId: \(edge.sourceId) contains a not existen nodeId \(nodeId)!")
+                        throw GraphStateError.missingNodeInEdgeMapping( "edge mapping for sourceId: \(edge.sourceId) contains a not existent nodeId \(nodeId)!")
                     }
                 }
             }
