@@ -10,6 +10,24 @@
 
 
 
+"name: v1.2.1" is a release tag
+
+## [v1.2.1](https://github.com/bsorrentino/LangGraph-Swift/releases/tag/v1.2.1) (2024-03-19)
+
+
+### Bug Fixes
+
+ -  handle process interruption on invoke ([8d340c46bd88347](https://github.com/bsorrentino/LangGraph-Swift/commit/8d340c46bd88347817bd074a171bc3ca46fd759d))
+
+
+### Documentation
+
+ -  update changelog ([7f7b2ef63e14957](https://github.com/bsorrentino/LangGraph-Swift/commit/7f7b2ef63e14957596cac7d7fc705cf294c05a99))
+
+
+
+
+
 "name: v1.2.0" is a release tag
 
 ## [v1.2.0](https://github.com/bsorrentino/LangGraph-Swift/releases/tag/v1.2.0) (2024-03-19)
