@@ -10,6 +10,29 @@
 
 
 
+"name: v1.2.0" is a release tag
+
+## [v1.2.0](https://github.com/bsorrentino/LangGraph-Swift/releases/tag/v1.2.0) (2024-03-19)
+
+### Features
+
+ *  check for task cancellation ([6167de22f904b26](https://github.com/bsorrentino/LangGraph-Swift/commit/6167de22f904b2697e6a4ec5fbe77ea25a866a6d))
+     > resolve  #2
+   
+
+
+### Documentation
+
+ -  update changelog ([185f938d61a8659](https://github.com/bsorrentino/LangGraph-Swift/commit/185f938d61a8659b688907d1906d2b7ba231e545))
+
+
+### Refactor
+
+ -  update error message ([e2c26b224338497](https://github.com/bsorrentino/LangGraph-Swift/commit/e2c26b22433849786e374e16124995a2c6d29cca))
+
+
+
+
 "name: v1.1.0" is a release tag
 
 ## [v1.1.0](https://github.com/bsorrentino/LangGraph-Swift/releases/tag/v1.1.0) (2024-03-17)
