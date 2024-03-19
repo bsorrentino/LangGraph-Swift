@@ -238,12 +238,15 @@ public class GraphState<State: AgentState>  {
                         if( verbose ) {
                             log.debug("start processing node \(currentNodeId)")
                         }
+                        
+                        try Task.checkCancellation()
                         let partialState = try await action( currentState )
-                                                 
+                        
                         currentState = mergeState( currentState: currentState, partialState: partialState)
                         
                         let output = NodeOutput(node: currentNodeId,state: currentState)
                         
+                        try Task.checkCancellation()
                         continuation.yield( output )
 
                         if( currentNodeId == finishPoint ) {
@@ -252,7 +255,7 @@ public class GraphState<State: AgentState>  {
                         
                         currentNodeId = try await nextNodeId(nodeId: currentNodeId, agentState: currentState)
                         
-                    } while( currentNodeId != END )
+                    } while( currentNodeId != END && !Task.isCancelled )
                     
                     continuation.finish()
                 }
@@ -264,13 +267,21 @@ public class GraphState<State: AgentState>  {
             return stream
         }
         
+        
+        /// run the graph an return the final State
+        ///
+        /// - Parameters:
+        ///   - inputs: partial state
+        ///   - verbose: enable verbose output (log)
+        /// - Returns: final State
         public func invoke( inputs: PartialAgentState, verbose:Bool = false ) async throws -> State {
             
-            var result:State?
-            for try await output in stream(inputs: inputs) {
-                result = output.state
-            }
-            return result!
+            let initResult:[NodeOutput<State>] = []
+            let result = try await stream(inputs: inputs).reduce( initResult, { partialResult, output in
+                [output]
+            })
+            
+            return result[0].state
         }
     }
 
@@ -388,19 +399,19 @@ public class GraphState<State: AgentState>  {
         for edge in edges {
             
             guard nodes.contains( makeFakeNode(edge.sourceId) ) else {
-                throw GraphStateError.missingNodeReferencedByEdge( "edge sourceId: \(edge.sourceId) reference a not existent node!")
+                throw GraphStateError.missingNodeReferencedByEdge( "edge sourceId: \(edge.sourceId) reference to non existent node!")
             }
 
             switch( edge.target ) {
             case .id( let targetId ):
                 guard targetId==END || nodes.contains(makeFakeNode(targetId) ) else {
-                    throw GraphStateError.missingNodeReferencedByEdge( "edge sourceId: \(edge.sourceId)  reference a not existent targetId: \(targetId) node!")
+                    throw GraphStateError.missingNodeReferencedByEdge( "edge sourceId: \(edge.sourceId)  reference to non existent node targetId: \(targetId) node!")
                 }
                 break
             case .condition((_, let edgeMappings)):
                 for (_,nodeId) in edgeMappings {
                     guard nodeId==END || nodes.contains(makeFakeNode(nodeId) ) else {
-                        throw GraphStateError.missingNodeInEdgeMapping( "edge mapping for sourceId: \(edge.sourceId) contains a not existen nodeId \(nodeId)!")
+                        throw GraphStateError.missingNodeInEdgeMapping( "edge mapping for sourceId: \(edge.sourceId) contains a not existent nodeId \(nodeId)!")
                     }
                 }
             }
