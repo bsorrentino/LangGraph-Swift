@@ -280,7 +280,9 @@ public class GraphState<State: AgentState>  {
             let result = try await stream(inputs: inputs).reduce( initResult, { partialResult, output in
                 [output]
             })
-            
+            if result.isEmpty {
+                throw GraphRunnerError.executionError("no state has been produced! probably processing has been interrupted")
+            }
             return result[0].state
         }
     }
