@@ -361,4 +361,54 @@ final class LangGraphTests: XCTestCase {
         XCTAssertEqual( ["agent_1", "agent_2", "agent_3"], nodesInvolved)
     }
 
+    func testWithStreamAnCancellation() async throws {
+            
+        let workflow = GraphState { AgentStateWithAppender() }
+        
+        try workflow.addNode("agent_1") { state in
+            try await Task.sleep(nanoseconds: 500_000_000)
+            return ["messages": "message1"]
+        }
+        try workflow.addNode("agent_2") { state in
+            try await Task.sleep(nanoseconds: 500_000_000)
+            return ["messages": ["message2", "message3"] ]
+        }
+        try workflow.addNode("agent_3") { state in
+            try await Task.sleep(nanoseconds: 500_000_000)
+            return ["result": state.messages?.count ?? 0]
+        }
+
+        try workflow.addEdge(sourceId: "agent_1", targetId: "agent_2")
+        try workflow.addEdge(sourceId: "agent_2", targetId: "agent_3")
+
+        try workflow.setEntryPoint("agent_1")
+        workflow.setFinishPoint("agent_3")
+
+        let app = try workflow.compile()
+            
+        let task = Task {
+                    
+            return try await app.stream(inputs: [:] ).reduce([] as [String]) { partialResult, output in
+                
+                print( "-------------")
+                print( "Agent Output of \(output.node)" )
+                print( output.state )
+                print( "-------------")
+                
+                return partialResult + [output.node ]
+            }
+            
+        }
+        
+        Task {
+            try await Task.sleep(nanoseconds: 1_150_000_000) // Sleep for 1/2 second
+            task.cancel()
+            print("Cancellation requested")
+        }
+        
+        let nodesInvolved = try await task.value
+        
+        XCTAssertEqual( ["agent_1", "agent_2" ], nodesInvolved)
+    }
+
 }

@@ -238,12 +238,15 @@ public class GraphState<State: AgentState>  {
                         if( verbose ) {
                             log.debug("start processing node \(currentNodeId)")
                         }
+                        
+                        try Task.checkCancellation()
                         let partialState = try await action( currentState )
-                                                 
+                        
                         currentState = mergeState( currentState: currentState, partialState: partialState)
                         
                         let output = NodeOutput(node: currentNodeId,state: currentState)
                         
+                        try Task.checkCancellation()
                         continuation.yield( output )
 
                         if( currentNodeId == finishPoint ) {
@@ -252,7 +255,7 @@ public class GraphState<State: AgentState>  {
                         
                         currentNodeId = try await nextNodeId(nodeId: currentNodeId, agentState: currentState)
                         
-                    } while( currentNodeId != END )
+                    } while( currentNodeId != END && !Task.isCancelled )
                     
                     continuation.finish()
                 }
@@ -264,13 +267,21 @@ public class GraphState<State: AgentState>  {
             return stream
         }
         
+        
+        /// run the graph an return the final State
+        ///
+        /// - Parameters:
+        ///   - inputs: partial state
+        ///   - verbose: enable verbose output (log)
+        /// - Returns: final State
         public func invoke( inputs: PartialAgentState, verbose:Bool = false ) async throws -> State {
             
-            var result:State?
-            for try await output in stream(inputs: inputs) {
-                result = output.state
-            }
-            return result!
+            let initResult:[NodeOutput<State>] = []
+            let result = try await stream(inputs: inputs).reduce( initResult, { partialResult, output in
+                [output]
+            })
+            
+            return result[0].state
         }
     }
 
