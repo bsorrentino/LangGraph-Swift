@@ -221,12 +221,12 @@ public func runAgent( input: String, llm: LLM, tools: [BaseTool], callbacks: [Ba
             throw GraphRunnerError.executionError("'agent_outcome' property not found in state!")
         }
 
-        switch agentOutcome {
-        case .finish:
-            return "finish"
-        case .action:
-            return "continue"
-        }
+        return switch agentOutcome {
+            case .finish:
+                "finish"
+            case .action:
+                "continue"
+            }
 
     }, edgeMapping: [
         "continue" : "call_action",
