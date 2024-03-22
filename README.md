@@ -156,8 +156,12 @@ In the [LangChainDemo](LangChainDemo) project, you can find the porting of [Agen
 
 ```
 
+# References
+
+* [AI Agent on iOS with LangGraph for Swift](https://dev.to/bsorrentino/ai-agent-on-ios-with-langgraph-for-swift-1740)
 
 
+[article1]: https://dev.to/bsorrentino/ai-agent-on-ios-with-langgraph-for-swift-1740
 [SwiftPM]: https://www.swift.org/documentation/package-manager/
 [langchain-swift]: https://github.com/buhe/langchain-swift.git
 [langchain.ai]: https://github.com/langchain-ai
