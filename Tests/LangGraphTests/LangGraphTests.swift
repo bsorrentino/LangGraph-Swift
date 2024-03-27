@@ -25,7 +25,7 @@ final class LangGraphTests: XCTestCase {
                     }
                 }
             }
-            if let value1 = value as? AppendableValue {
+            if let value1 = value as? (any AppendableValueProtocol) {
                 if value1.array.count == values2.count {
                     for ( v1, v2) in zip(value1.array, values2) {
                         return compareAsEquatable( v1, v2 )
@@ -280,7 +280,7 @@ final class LangGraphTests: XCTestCase {
         var data: [String : Any]
         
         init() {
-            self.init( ["messages": AppendableValue()] )
+            self.init( ["messages": AppendableValue<String>()] )
         }
         
         init(_ initState: [String : Any]) {

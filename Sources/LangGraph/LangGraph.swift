@@ -9,23 +9,47 @@ struct RunnableConfig {
     
 }
 
-public struct AppendableValue {
-    var array: [Any]
+protocol AppendableValueProtocol {
+    associatedtype ItemType
     
-    mutating func append( values: [Any] ) {
-        array.append(contentsOf: values)
-    }
-    mutating func append( value: Any ) {
+    var array: [ItemType] { get set }
+    
+    mutating func append( values: [Any] ) throws
+    mutating func append( value: Any ) throws
+
+}
+
+
+public struct AppendableValue<T> : AppendableValueProtocol {
+    typealias ItemType = T
+    
+    var array: [T]
+    
+    mutating func append( value: T ) {
         array.append(value)
     }
     
+    mutating func append( values: [Any] ) throws {
+        guard let typedValues = values as? [T] else {
+            throw GraphRunnerError.executionError( "AppenderValue type mismatch!")
+        }
+        array.append(contentsOf: typedValues)
+    }
+    mutating func append( value: Any ) throws {
+        guard let typedValue = value as? T else {
+            throw GraphRunnerError.executionError( "AppenderValue type mismatch!")
+        }
+        array.append(typedValue)
+    }
+
     public init() {
         array = []
     }
 
-    public init( values: [Any] ) {
+    public init( values: [T] ) {
         array = values
     }
+    
 }
 
 public protocol AgentState {
@@ -44,7 +68,7 @@ extension AgentState {
     }
                 
     public func appendableValue<T>( _ key: String ) -> [T]? {
-        return (data[ key ] as? AppendableValue)?.array as? [T]
+        return (data[ key ] as? AppendableValue<T>)?.array as? [T]
     }
 }
 
@@ -177,19 +201,19 @@ public class GraphState<State: AgentState>  {
             }
         }
         
-        private func mergeState( currentState: State, partialState: PartialAgentState ) -> State {
+        private func mergeState( currentState: State, partialState: PartialAgentState ) throws -> State {
             if partialState.isEmpty {
                 return currentState
             }
-            let newState = currentState.data.merging(partialState, uniquingKeysWith: { 
+            let newState = try currentState.data.merging(partialState, uniquingKeysWith: {
                 (current, new) in
                 
-                if var appender = current as? AppendableValue {
+                if var appender = current as? (any AppendableValueProtocol) {
                     if let newValue = new as? [Any] {
-                        appender.append(values: newValue)
+                        try appender.append(values: newValue )
                     }
                     else {
-                        appender.append(value: new)
+                        try appender.append(value: new)
                     }
                     return appender
                 }
@@ -223,11 +247,11 @@ public class GraphState<State: AgentState>  {
             let (stream, continuation) = AsyncThrowingStream.makeStream(of: NodeOutput<State>.self, throwing: Error.self)
             
             Task {
-                var currentState = mergeState( currentState: self.stateFactory(), partialState: inputs)
-                var currentNodeId = entryPoint
                 
                 do {
-                
+                    var currentNodeId = entryPoint
+                    var currentState = try mergeState( currentState: self.stateFactory(), partialState: inputs)
+
                     repeat {
                         
                         guard let action = nodes[currentNodeId] else {
@@ -242,7 +266,7 @@ public class GraphState<State: AgentState>  {
                         try Task.checkCancellation()
                         let partialState = try await action( currentState )
                         
-                        currentState = mergeState( currentState: currentState, partialState: partialState)
+                        currentState = try mergeState( currentState: currentState, partialState: partialState)
                         
                         let output = NodeOutput(node: currentNodeId,state: currentState)
                         
