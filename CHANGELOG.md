@@ -1,11 +1,26 @@
 # Changelog
 
 
+"name: v1.2.2" is a release tag
 
-## [Unreleased](https://github.com/bsorrentino/LangGraph-Swift/releases/tag/Unreleased) ()
+## [v1.2.2](https://github.com/bsorrentino/LangGraph-Swift/releases/tag/v1.2.2) (2024-04-20)
+
+### Features
+
+ *  enabletyped  AppendableValue ([995a3e9295957cf](https://github.com/bsorrentino/LangGraph-Swift/commit/995a3e9295957cffebb0784bea342375308d1785))
+   
 
 
+### Documentation
 
+ -  update readme ([245213881528d9a](https://github.com/bsorrentino/LangGraph-Swift/commit/245213881528d9a8867d85939f1e168e53b705c2))
+
+ -  update changelog ([5d49eeef8bd6a96](https://github.com/bsorrentino/LangGraph-Swift/commit/5d49eeef8bd6a96b88115036dc4bd93f71eab2ef))
+
+
+### Refactor
+
+ -  use switch expression ([4062b742904d668](https://github.com/bsorrentino/LangGraph-Swift/commit/4062b742904d66819d4a4fb63e6a3aeff7692896))
 
 
 
