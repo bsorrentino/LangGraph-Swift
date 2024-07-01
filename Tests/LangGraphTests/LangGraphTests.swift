@@ -187,7 +187,7 @@ final class LangGraphTests: XCTestCase {
             
             print( "sum", state )
             guard let add1 = state.add1, let add2 = state.add2 else {
-                throw GraphRunnerError.executionError("agent state is not valid! expect 'add1', 'add2'")
+                throw CompiledGraphError.executionError("agent state is not valid! expect 'add1', 'add2'")
             }
             
             return ["result": add1 + add2 ]
@@ -225,7 +225,7 @@ final class LangGraphTests: XCTestCase {
             
             print( "sum", state )
             guard let add1 = state.add1, let add2 = state.add2 else {
-                throw GraphRunnerError.executionError("agent state is not valid! expect 'add1', 'add2'")
+                throw CompiledGraphError.executionError("agent state is not valid! expect 'add1', 'add2'")
             }
             
             return ["result": add1 + add2 ]
@@ -234,7 +234,7 @@ final class LangGraphTests: XCTestCase {
             
             print( "mul", state )
             guard let add1 = state.add1, let add2 = state.add2 else {
-                throw GraphRunnerError.executionError("agent state is not valid! expect 'add1', 'add2'")
+                throw CompiledGraphError.executionError("agent state is not valid! expect 'add1', 'add2'")
             }
             
             return ["result": add1 * add2 ]

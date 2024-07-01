@@ -31,13 +31,13 @@ public struct AppendableValue<T> : AppendableValueProtocol {
     
     mutating func append( values: [Any] ) throws {
         guard let typedValues = values as? [T] else {
-            throw GraphRunnerError.executionError( "AppenderValue type mismatch!")
+            throw CompiledGraphError.executionError( "AppenderValue type mismatch!")
         }
         array.append(contentsOf: typedValues)
     }
     mutating func append( value: Any ) throws {
         guard let typedValue = value as? T else {
-            throw GraphRunnerError.executionError( "AppenderValue type mismatch!")
+            throw CompiledGraphError.executionError( "AppenderValue type mismatch!")
         }
         array.append(typedValue)
     }
@@ -101,7 +101,7 @@ public struct BaseAgentState : AgentState {
     
     
 }
-public enum GraphStateError : Error {
+public enum StateGraphError : Error {
     case duplicateNodeError( String )
     case duplicateEdgeError( String )
     case missingEntryPoint
@@ -140,7 +140,7 @@ public enum GraphStateError : Error {
 
 }
 
-public enum GraphRunnerError : Error {
+public enum CompiledGraphError : Error {
     case missingEdge( String )
     case missingNode( String )
     case missingNodeInEdgeMapping( String )
@@ -226,7 +226,7 @@ public class StateGraph<State: AgentState>  {
         private func nextNodeId( nodeId: String, agentState: State ) async throws -> String {
             
             guard let route = edges[nodeId] else {
-                throw GraphRunnerError.missingEdge("edge with node: \(nodeId) not found!")
+                throw CompiledGraphError.missingEdge("edge with node: \(nodeId) not found!")
             }
             
             switch( route ) {
@@ -236,7 +236,7 @@ public class StateGraph<State: AgentState>  {
                 
                 let newRoute = try await condition( agentState )
                 guard let result = mapping[newRoute] else {
-                    throw GraphRunnerError.missingNodeInEdgeMapping("cannot find edge mapping for id: \(newRoute) in conditional edge with sourceId:\(nodeId) ")
+                    throw CompiledGraphError.missingNodeInEdgeMapping("cannot find edge mapping for id: \(newRoute) in conditional edge with sourceId:\(nodeId) ")
                 }
                 return result
             }
@@ -255,7 +255,7 @@ public class StateGraph<State: AgentState>  {
                     repeat {
                         
                         guard let action = nodes[currentNodeId] else {
-                            continuation.finish(throwing: GraphRunnerError.missingNode("node: \(currentNodeId) not found!") )
+                            continuation.finish(throwing: CompiledGraphError.missingNode("node: \(currentNodeId) not found!") )
                             break
                         }
                         
@@ -305,7 +305,7 @@ public class StateGraph<State: AgentState>  {
                 [output]
             })
             if result.isEmpty {
-                throw GraphRunnerError.executionError("no state has been produced! probably processing has been interrupted")
+                throw CompiledGraphError.executionError("no state has been produced! probably processing has been interrupted")
             }
             return result[0].state
         }
@@ -357,43 +357,43 @@ public class StateGraph<State: AgentState>  {
     
     public func addNode( _ id: String, action: @escaping NodeAction<State> ) throws {
         guard id != END else {
-            throw GraphStateError.invalidNodeIdentifier( "END is not a valid node id!")
+            throw StateGraphError.invalidNodeIdentifier( "END is not a valid node id!")
         }
         let node = Node(id: id,action: action)
         if nodes.contains(node) {
-            throw GraphStateError.duplicateNodeError("node with id:\(id) already exist!")
+            throw StateGraphError.duplicateNodeError("node with id:\(id) already exist!")
         }
         nodes.insert( node )
         
     }
     public func addEdge( sourceId: String, targetId: String ) throws {
         guard sourceId != END else {
-            throw GraphStateError.invalidEdgeIdentifier( "END is not a valid edge sourceId!")
+            throw StateGraphError.invalidEdgeIdentifier( "END is not a valid edge sourceId!")
         }
 
         let edge = Edge(sourceId: sourceId, target: .id(targetId) )
         if edges.contains(edge) {
-            throw GraphStateError.duplicateEdgeError("edge with id:\(sourceId) already exist!")
+            throw StateGraphError.duplicateEdgeError("edge with id:\(sourceId) already exist!")
         }
         edges.insert( edge )
     }
     public func addConditionalEdge( sourceId: String, condition: @escaping EdgeCondition<State>, edgeMapping: [String:String] ) throws {
         guard sourceId != END else {
-            throw GraphStateError.invalidEdgeIdentifier( "END is not a valid edge sourceId!")
+            throw StateGraphError.invalidEdgeIdentifier( "END is not a valid edge sourceId!")
         }
         if edgeMapping.isEmpty {
-            throw GraphStateError.edgeMappingIsEmpty
+            throw StateGraphError.edgeMappingIsEmpty
         }
 
         let edge = Edge(sourceId: sourceId, target: .condition(( condition, edgeMapping)) )
         if edges.contains(edge) {
-            throw GraphStateError.duplicateEdgeError("edge with id:\(sourceId) already exist!")
+            throw StateGraphError.duplicateEdgeError("edge with id:\(sourceId) already exist!")
         }
         edges.insert( edge)
     }
     public func setEntryPoint( _ nodeId: String ) throws {
         guard nodeId != END else {
-            throw GraphStateError.invalidNodeIdentifier( "END is not a valid node entry point!")
+            throw StateGraphError.invalidNodeIdentifier( "END is not a valid node entry point!")
         }
         entryPoint = nodeId
     }
@@ -409,35 +409,35 @@ public class StateGraph<State: AgentState>  {
     
     public func compile() throws -> CompiledGraph {
         guard let entryPoint else {
-            throw GraphStateError.missingEntryPoint
+            throw StateGraphError.missingEntryPoint
         }
         
         guard nodes.contains( makeFakeNode( entryPoint ) ) else {
-            throw GraphStateError.entryPointNotExist( "entryPoint: \(entryPoint) doesn't exist!")
+            throw StateGraphError.entryPointNotExist( "entryPoint: \(entryPoint) doesn't exist!")
         }
         
         if let finishPoint {
             guard nodes.contains( makeFakeNode( finishPoint ) ) else {
-                throw GraphStateError.finishPointNotExist( "finishPoint: \(finishPoint) doesn't exist!")
+                throw StateGraphError.finishPointNotExist( "finishPoint: \(finishPoint) doesn't exist!")
             }
         }
         // TODO check edges
         for edge in edges {
             
             guard nodes.contains( makeFakeNode(edge.sourceId) ) else {
-                throw GraphStateError.missingNodeReferencedByEdge( "edge sourceId: \(edge.sourceId) reference to non existent node!")
+                throw StateGraphError.missingNodeReferencedByEdge( "edge sourceId: \(edge.sourceId) reference to non existent node!")
             }
 
             switch( edge.target ) {
             case .id( let targetId ):
                 guard targetId==END || nodes.contains(makeFakeNode(targetId) ) else {
-                    throw GraphStateError.missingNodeReferencedByEdge( "edge sourceId: \(edge.sourceId)  reference to non existent node targetId: \(targetId) node!")
+                    throw StateGraphError.missingNodeReferencedByEdge( "edge sourceId: \(edge.sourceId)  reference to non existent node targetId: \(targetId) node!")
                 }
                 break
             case .condition((_, let edgeMappings)):
                 for (_,nodeId) in edgeMappings {
                     guard nodeId==END || nodes.contains(makeFakeNode(nodeId) ) else {
-                        throw GraphStateError.missingNodeInEdgeMapping( "edge mapping for sourceId: \(edge.sourceId) contains a not existent nodeId \(nodeId)!")
+                        throw StateGraphError.missingNodeInEdgeMapping( "edge mapping for sourceId: \(edge.sourceId) contains a not existent nodeId \(nodeId)!")
                     }
                 }
             }
