@@ -169,14 +169,14 @@ public let END = "__END__" // id of the edge ending workflow
 
 let log = Logger( subsystem: Bundle.module.bundleIdentifier ?? "langgraph", category: "main")
 
-public class GraphState<State: AgentState>  {
+public class StateGraph<State: AgentState>  {
     
     enum EdgeValue /* Union */ {
         case id(String)
         case condition( ( EdgeCondition<State>, [String:String] ) )
     }
     
-    public class Runner {
+    public class CompiledGraph {
     
         var stateFactory: () -> State
         var nodes:Dictionary<String, NodeAction<State>>
@@ -184,7 +184,7 @@ public class GraphState<State: AgentState>  {
         var entryPoint:String
         var finishPoint:String?
 
-        init( owner: GraphState ) {
+        init( owner: StateGraph ) {
             
             self.stateFactory = owner.stateFactory
             self.nodes = Dictionary()
@@ -315,7 +315,7 @@ public class GraphState<State: AgentState>  {
         var id: String {
             sourceId
         }
-        static func == (lhs: GraphState.Edge, rhs: GraphState.Edge) -> Bool {
+        static func == (lhs: StateGraph.Edge, rhs: StateGraph.Edge) -> Bool {
             lhs.id == rhs.id
         }
         
@@ -331,7 +331,7 @@ public class GraphState<State: AgentState>  {
     private var edges: Set<Edge> = []
     
     struct Node : Hashable, Identifiable {
-        static func == (lhs: GraphState.Node, rhs: GraphState.Node) -> Bool {
+        static func == (lhs: StateGraph.Node, rhs: StateGraph.Node) -> Bool {
             lhs.id == rhs.id
         }
         
@@ -407,7 +407,7 @@ public class GraphState<State: AgentState>  {
         Node(id: id, action: fakeAction)
     }
     
-    public func compile() throws -> Runner {
+    public func compile() throws -> CompiledGraph {
         guard let entryPoint else {
             throw GraphStateError.missingEntryPoint
         }
@@ -443,6 +443,6 @@ public class GraphState<State: AgentState>  {
             }
         }
         
-        return Runner( owner: self )
+        return CompiledGraph( owner: self )
     }
 }

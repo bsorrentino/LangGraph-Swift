@@ -48,7 +48,7 @@ final class LangGraphTests: XCTestCase {
     }
     func testValidation() async throws {
             
-        let workflow = GraphState { BaseAgentState() }
+        let workflow = StateGraph { BaseAgentState() }
         
         XCTAssertThrowsError( try workflow.compile() ) {error in 
             print( error )
@@ -128,7 +128,7 @@ final class LangGraphTests: XCTestCase {
 
     func testRunningOneNode() async throws {
             
-        let workflow = GraphState { BaseAgentState() }
+        let workflow = StateGraph { BaseAgentState() }
         try workflow.setEntryPoint("agent_1")
         try workflow.addNode("agent_1") { state in
             
@@ -171,7 +171,7 @@ final class LangGraphTests: XCTestCase {
 
     func testRunningTreeNodes() async throws {
             
-        let workflow = GraphState { BinaryOpState() }
+        let workflow = StateGraph { BinaryOpState() }
         
         try workflow.addNode("agent_1") { state in
             
@@ -209,7 +209,7 @@ final class LangGraphTests: XCTestCase {
 
     func testRunningFourNodesWithCondition() async throws {
             
-        let workflow = GraphState { BinaryOpState() }
+        let workflow = StateGraph { BinaryOpState() }
         
         try workflow.addNode("agent_1") { state in
             
@@ -293,7 +293,7 @@ final class LangGraphTests: XCTestCase {
 
     func testAppender() async throws {
             
-        let workflow = GraphState { AgentStateWithAppender() }
+        let workflow = StateGraph { AgentStateWithAppender() }
         
         try workflow.addNode("agent_1") { state in
             
@@ -327,7 +327,7 @@ final class LangGraphTests: XCTestCase {
 
     func testWithStream() async throws {
             
-        let workflow = GraphState { AgentStateWithAppender() }
+        let workflow = StateGraph { AgentStateWithAppender() }
         
         try workflow.addNode("agent_1") { state in
             ["messages": "message1"]
@@ -363,7 +363,7 @@ final class LangGraphTests: XCTestCase {
 
     func testWithStreamAnCancellation() async throws {
             
-        let workflow = GraphState { AgentStateWithAppender() }
+        let workflow = StateGraph { AgentStateWithAppender() }
         
         try workflow.addNode("agent_1") { state in
             try await Task.sleep(nanoseconds: 500_000_000)
