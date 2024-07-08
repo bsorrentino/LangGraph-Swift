@@ -1,6 +1,39 @@
 # Changelog
 
 
+"name: v2.0.0" is a release tag
+
+## [v2.0.0](https://github.com/bsorrentino/LangGraph-Swift/releases/tag/v2.0.0) (2024-07-08)
+
+### Features
+
+ *  add setConditionalEntryPoint method ([d870c296b8c73f0](https://github.com/bsorrentino/LangGraph-Swift/commit/d870c296b8c73f03bb3e667142badca2a95b4773))
+     > resolve #3
+   
+
+
+### Documentation
+
+ -  update readme ([3cbe0fa5f9bde5f](https://github.com/bsorrentino/LangGraph-Swift/commit/3cbe0fa5f9bde5fa28d63ed4dc9aa34c2e4e7a74))
+
+ -  update changelog ([313a953020673c1](https://github.com/bsorrentino/LangGraph-Swift/commit/313a953020673c162dfa6b8d1f76d78ce4930d2c))
+
+
+### Refactor
+
+ -  **tests**  update class names ([61edc7ce9e51acc](https://github.com/bsorrentino/LangGraph-Swift/commit/61edc7ce9e51acc4d933da112443dae358db6847))
+
+ -  **AgentExecutor**  apply new names ([2a1e495e4874c33](https://github.com/bsorrentino/LangGraph-Swift/commit/2a1e495e4874c33c4abfdd5d65153571a838c6c0))
+
+ -  **langgraph**  rename Errors enum ([2414f647631d331](https://github.com/bsorrentino/LangGraph-Swift/commit/2414f647631d3315d54c90857cceffc8a0ce9969))
+
+ -  rename classes ([0800db80be61009](https://github.com/bsorrentino/LangGraph-Swift/commit/0800db80be61009e211bc9e79a90dfa1db77110e))
+     > GraphState -&gt; StateGraph
+     > Runner -&gt; CompiledGraph
+
+
+
+
 "name: v1.2.2" is a release tag
 
 ## [v1.2.2](https://github.com/bsorrentino/LangGraph-Swift/releases/tag/v1.2.2) (2024-04-20)
