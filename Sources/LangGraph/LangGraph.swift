@@ -5,46 +5,121 @@ public typealias PartialAgentState = [String: Any]
 public typealias NodeAction<Action: AgentState> = ( Action ) async throws -> PartialAgentState
 public typealias EdgeCondition<Action: AgentState> = ( Action ) async throws -> String
 
-protocol AppendableValueProtocol {
+public typealias BinaryOperator<Value> = ( Value?, Value ) throws -> Value
+public typealias UnaryOperator<Value> = () -> Value
+
+public struct Evaluator<T> {
+    var value: BinaryOperator<T>
+    var `default`: UnaryOperator<T>?
+}
+
+enum Channel<T> {
+    case Value
+    case Eval( Evaluator<T> )
+}
+
+protocol EvaluableValueProtocol {
     associatedtype ItemType
     
-    var array: [ItemType] { get set }
+    var value: ItemType? { get }
     
-    mutating func append( values: [Any] ) throws
-    mutating func append( value: Any ) throws
+    mutating func setValue( _ newValue: Any ) throws -> Void
+}
 
+public struct EvaluableValue<T> : EvaluableValueProtocol {
+    typealias ItemType = T
+    
+    private var channel: Channel<Any>
+    private var _value: T?
+    
+    public var value: T? {
+        get {
+            _value
+        }
+    }
+    
+    public init( ){
+        self.channel = Channel.Value
+    }
+
+    public init( evaluator: Evaluator<Any> ){
+        self.channel = Channel.Eval(evaluator)
+        if let defaultValue = evaluator.default {
+            self._value = defaultValue() as? T
+        }
+    }
+
+    mutating func setValue( _ newValue: Any ) throws {
+        
+        switch( channel ) {
+        case .Value:
+            _value = newValue as? T
+            
+        case .Eval( let evaluator ):
+            _value =  try evaluator.value( _value, newValue ) as? T
+           
+        }
+    }
+}
+
+protocol AppendableValueProtocol : EvaluableValueProtocol {
+    
 }
 
 public struct AppendableValue<T> : AppendableValueProtocol {
-    typealias ItemType = T
+    typealias ItemType = [T]
     
-    var array: [T]
+    var _value:EvaluableValue<[T]>?
     
-    mutating func append( value: T ) {
-        array.append(value)
+    public var value: [T]? {
+        get {
+            _value?.value
+        }
     }
     
-    mutating func append( values: [Any] ) throws {
-        guard let typedValues = values as? [T] else {
-            throw CompiledGraphError.executionError( "AppenderValue type mismatch!")
+    func _append( left: Any, right: Any ) throws -> Any  {
+        if let typedValues = right as? [T] {
+            guard var left = left as? [T] else {
+                return typedValues
+            }
+
+            left.append(contentsOf: typedValues)
+            return left
         }
-        array.append(contentsOf: typedValues)
-    }
-    mutating func append( value: Any ) throws {
-        guard let typedValue = value as? T else {
-            throw CompiledGraphError.executionError( "AppenderValue type mismatch!")
-        }
-        array.append(typedValue)
+        
+        
+        throw CompiledGraphError.executionError( "AppenderValue type mismatch!")
     }
 
     public init() {
-        array = []
+        
+        let evaluator = Evaluator( value: _append )
+        _value = EvaluableValue( evaluator: evaluator )
     }
 
     public init( values: [T] ) {
-        array = values
+        let evaluator = Evaluator( value: _append) {
+            values
+        }
+        _value = EvaluableValue( evaluator: evaluator )
     }
     
+    mutating func setValue( _ newValue: Any ) throws {
+        if let newValue = newValue as? T {
+
+            try self._value?.setValue([newValue])
+            return
+        }
+        
+        if let newValue = newValue as? [T] {
+            
+            try self._value?.setValue( newValue )
+            return 
+        }
+        
+        throw CompiledGraphError.executionError( "AppenderValue type mismatch!")
+    }
+
 }
 
 public protocol AgentState {
@@ -61,9 +136,19 @@ extension AgentState {
     public func value<T>( _ key: String ) -> T? {
         return data[ key ] as? T
     }
+    
+    public func evaluableValue<T>(_ key: String  ) -> T? {
+        guard let eval = data[ key ] as? EvaluableValue<T> else {
+            return nil
+        }
+        return eval.value
+    }
                 
     public func appendableValue<T>( _ key: String ) -> [T]? {
-        return (data[ key ] as? AppendableValue<T>)?.array as? [T]
+        guard let eval = data[ key ] as? AppendableValue<T> else {
+            return nil
+        }
+        return eval.value
     }
 }
 
@@ -203,14 +288,10 @@ public class StateGraph<State: AgentState>  {
             let newState = try currentState.data.merging(partialState, uniquingKeysWith: {
                 (current, new) in
                 
-                if var appender = current as? (any AppendableValueProtocol) {
-                    if let newValue = new as? [Any] {
-                        try appender.append(values: newValue )
-                    }
-                    else {
-                        try appender.append(value: new)
-                    }
-                    return appender
+                if var eval = current as? (any EvaluableValueProtocol) {
+                    try eval.setValue(new)
+                    
+                    return eval
                 }
                 return new
             })

@@ -26,12 +26,14 @@ final class LangGraphTests: XCTestCase {
                 }
             }
             if let value1 = value as? (any AppendableValueProtocol) {
-                if value1.array.count == values2.count {
-                    for ( v1, v2) in zip(value1.array, values2) {
-                        return compareAsEquatable( v1, v2 )
+                if let values = value1.value as? [Any] {
+                    if values.count == values2.count {
+                        for ( v1, v2) in zip(values, values2) {
+                            return compareAsEquatable( v1, v2 )
+                        }
                     }
-                }
 
+                }
             }
         }
         return false
@@ -287,7 +289,7 @@ final class LangGraphTests: XCTestCase {
             data = initState
         }
         var messages:[String]? {
-           appendableValue("messages")
+            appendableValue("messages")
         }
     }
 
