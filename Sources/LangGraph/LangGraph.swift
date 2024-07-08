@@ -5,10 +5,6 @@ public typealias PartialAgentState = [String: Any]
 public typealias NodeAction<Action: AgentState> = ( Action ) async throws -> PartialAgentState
 public typealias EdgeCondition<Action: AgentState> = ( Action ) async throws -> String
 
-struct RunnableConfig {
-    
-}
-
 protocol AppendableValueProtocol {
     associatedtype ItemType
     
@@ -18,7 +14,6 @@ protocol AppendableValueProtocol {
     mutating func append( value: Any ) throws
 
 }
-
 
 public struct AppendableValue<T> : AppendableValueProtocol {
     typealias ItemType = T
@@ -181,7 +176,7 @@ public class StateGraph<State: AgentState>  {
         var stateFactory: () -> State
         var nodes:Dictionary<String, NodeAction<State>>
         var edges:Dictionary<String, EdgeValue>
-        var entryPoint:String
+        var entryPoint:EdgeValue
         var finishPoint:String?
 
         init( owner: StateGraph ) {
@@ -222,10 +217,9 @@ public class StateGraph<State: AgentState>  {
             return State.init(newState)
         }
         
-        
-        private func nextNodeId( nodeId: String, agentState: State ) async throws -> String {
+        private func nextNodeId( route: EdgeValue?, agentState: State, nodeId: String ) async throws -> String {
             
-            guard let route = edges[nodeId] else {
+            guard let route else {
                 throw CompiledGraphError.missingEdge("edge with node: \(nodeId) not found!")
             }
             
@@ -241,7 +235,14 @@ public class StateGraph<State: AgentState>  {
                 return result
             }
         }
-        
+
+        private func nextNodeId( nodeId: String, agentState: State ) async throws -> String {
+            try await nextNodeId(route: edges[nodeId], agentState: agentState, nodeId: nodeId)
+        }
+        private func getEntryPoint( agentState: State ) async throws -> String {
+            try await nextNodeId( route: self.entryPoint, agentState: agentState, nodeId: "entryPoint" )
+        }
+
         public func stream( inputs: PartialAgentState, verbose:Bool = false ) -> AsyncThrowingStream<NodeOutput<State>, Error> {
             
             let (stream, continuation) = AsyncThrowingStream.makeStream(of: NodeOutput<State>.self, throwing: Error.self)
@@ -249,8 +250,8 @@ public class StateGraph<State: AgentState>  {
             Task {
                 
                 do {
-                    var currentNodeId = entryPoint
                     var currentState = try mergeState( currentState: self.stateFactory(), partialState: inputs)
+                    var currentNodeId = try await self.getEntryPoint(agentState: currentState )
 
                     repeat {
                         
@@ -345,7 +346,7 @@ public class StateGraph<State: AgentState>  {
     
     private var nodes: Set<Node> = []
 
-    private var entryPoint: String?
+    private var entryPoint: EdgeValue?
     private var finishPoint: String?
 
     private var stateFactory: () -> State
@@ -395,7 +396,13 @@ public class StateGraph<State: AgentState>  {
         guard nodeId != END else {
             throw StateGraphError.invalidNodeIdentifier( "END is not a valid node entry point!")
         }
-        entryPoint = nodeId
+        entryPoint = EdgeValue.id(nodeId)
+    }
+    public func setConditionalEntryPoint( condition: @escaping EdgeCondition<State>, edgeMapping: [String:String] ) throws {
+        if edgeMapping.isEmpty {
+            throw StateGraphError.edgeMappingIsEmpty
+        }
+        entryPoint = EdgeValue.condition((condition, edgeMapping))
     }
     public func setFinishPoint( _ nodeId: String ) {
         finishPoint = nodeId
@@ -412,8 +419,19 @@ public class StateGraph<State: AgentState>  {
             throw StateGraphError.missingEntryPoint
         }
         
-        guard nodes.contains( makeFakeNode( entryPoint ) ) else {
-            throw StateGraphError.entryPointNotExist( "entryPoint: \(entryPoint) doesn't exist!")
+        switch( entryPoint ) {
+            case .id( let targetId ):
+                guard nodes.contains( makeFakeNode( targetId ) ) else {
+                    throw StateGraphError.entryPointNotExist( "entryPoint: \(targetId) doesn't exist!")
+                }
+            break
+            case .condition((_, let edgeMappings)):
+                for (_,nodeId) in edgeMappings {
+                    guard nodeId==END || nodes.contains(makeFakeNode(nodeId) ) else {
+                        throw StateGraphError.missingNodeInEdgeMapping( "edge mapping for entryPoint contains a not existent nodeId \(nodeId)!")
+                    }
+                }
+            break
         }
         
         if let finishPoint {
