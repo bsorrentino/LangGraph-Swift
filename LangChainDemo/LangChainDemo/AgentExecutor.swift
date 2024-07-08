@@ -58,7 +58,7 @@ struct AgentExecutorState : AgentState {
 struct ToolOutputParser: BaseOutputParser {
     public init() {}
     public func parse(text: String) -> Parsed {
-        print(text.uppercased())
+        print("\n-------\n\(text.uppercased())\n-------\n")
         let pattern = "Action\\s*:[\\s]*(.*)[\\s]*Action\\s*Input\\s*:[\\s]*(.*)"
         let regex = try! NSRegularExpression(pattern: pattern)
         
