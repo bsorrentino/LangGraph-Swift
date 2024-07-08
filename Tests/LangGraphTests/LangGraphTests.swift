@@ -52,14 +52,14 @@ final class LangGraphTests: XCTestCase {
         
         XCTAssertThrowsError( try workflow.compile() ) {error in 
             print( error )
-            XCTAssertTrue(error is GraphStateError, "\(error) is not a GraphStateError")
+            XCTAssertTrue(error is StateGraphError, "\(error) is not a GraphStateError")
         }
         
         try workflow.setEntryPoint("agent_1")
 
         XCTAssertThrowsError( try workflow.compile() ) {error in
             print( error )
-            XCTAssertTrue(error is GraphStateError, "\(error) is not a GraphStateError")
+            XCTAssertTrue(error is StateGraphError, "\(error) is not a GraphStateError")
         }
         
         try workflow.addNode("agent_1") { state in
@@ -76,13 +76,13 @@ final class LangGraphTests: XCTestCase {
         
         XCTAssertThrowsError( try workflow.addEdge(sourceId: END, targetId: "agent_1") ) {error in
             print( error )
-            XCTAssertTrue(error is GraphStateError, "\(error) is not a GraphStateError")
+            XCTAssertTrue(error is StateGraphError, "\(error) is not a GraphStateError")
         }
         
         XCTAssertThrowsError(try workflow.addEdge(sourceId: "agent_1", targetId: "agent_2")) { error in
             
-            XCTAssertTrue(error is GraphStateError, "\(error) is not a GraphStateError")
-            if case GraphStateError.duplicateEdgeError(let msg) = error {
+            XCTAssertTrue(error is StateGraphError, "\(error) is not a GraphStateError")
+            if case StateGraphError.duplicateEdgeError(let msg) = error {
                 print( "EXCEPTION:", msg )
             }
             else {
@@ -100,8 +100,8 @@ final class LangGraphTests: XCTestCase {
         try workflow.addEdge(sourceId: "agent_2", targetId: "agent_3")
 
         XCTAssertThrowsError( try workflow.compile() ) {error in
-            XCTAssertTrue(error is GraphStateError, "\(error) is not a GraphStateError")
-            if case GraphStateError.missingNodeReferencedByEdge(let msg) = error {
+            XCTAssertTrue(error is StateGraphError, "\(error) is not a GraphStateError")
+            if case StateGraphError.missingNodeReferencedByEdge(let msg) = error {
                print( "EXCEPTION:", msg )
             }
             else {
@@ -114,8 +114,8 @@ final class LangGraphTests: XCTestCase {
             try workflow.addConditionalEdge(sourceId: "agent_1", condition:{ _ in return "agent_3"}, edgeMapping: [:])
         ) { error in
             
-            XCTAssertTrue(error is GraphStateError, "\(error) is not a GraphStateError")
-            if case GraphStateError.edgeMappingIsEmpty = error {
+            XCTAssertTrue(error is StateGraphError, "\(error) is not a GraphStateError")
+            if case StateGraphError.edgeMappingIsEmpty = error {
                print( "EXCEPTION:", error  )
             }
             else {

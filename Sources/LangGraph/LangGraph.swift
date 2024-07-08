@@ -5,10 +5,6 @@ public typealias PartialAgentState = [String: Any]
 public typealias NodeAction<Action: AgentState> = ( Action ) async throws -> PartialAgentState
 public typealias EdgeCondition<Action: AgentState> = ( Action ) async throws -> String
 
-struct RunnableConfig {
-    
-}
-
 protocol AppendableValueProtocol {
     associatedtype ItemType
     
@@ -18,7 +14,6 @@ protocol AppendableValueProtocol {
     mutating func append( value: Any ) throws
 
 }
-
 
 public struct AppendableValue<T> : AppendableValueProtocol {
     typealias ItemType = T
