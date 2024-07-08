@@ -91,17 +91,17 @@ In the [LangChainDemo](LangChainDemo) project, you can find the porting of [Agen
     }
 
 
-    let workflow = GraphState {
+    let workflow = StateGraph {
         AgentExecutorState()
     }
     
     try workflow.addNode("call_agent" ) { state in
         
         guard let input = state.input else {
-            throw GraphRunnerError.executionError("'input' argument not found in state!")
+            throw CompiledGraphError.executionError("'input' argument not found in state!")
         }
         guard let intermediate_steps = state.intermediate_steps else {
-            throw GraphRunnerError.executionError("'intermediate_steps' property not found in state!")
+            throw CompiledGraphError.executionError("'intermediate_steps' property not found in state!")
         }
 
         let step = await agent.plan(input: input, intermediate_steps: intermediate_steps)
@@ -111,17 +111,17 @@ In the [LangChainDemo](LangChainDemo) project, you can find the porting of [Agen
         case .action( let action ):
             return [ "agent_outcome": AgentOutcome.action(action) ]
         default:
-            throw GraphRunnerError.executionError( "Parsed.error" )
+            throw CompiledGraphError.executionError( "Parsed.error" )
         }
     }
 
     try workflow.addNode("call_action" ) { state in
         
         guard let agentOutcome = state.agentOutcome else {
-            throw GraphRunnerError.executionError("'agent_outcome' property not found in state!")
+            throw CompiledGraphError.executionError("'agent_outcome' property not found in state!")
         }
         guard case .action(let action) = agentOutcome else {
-            throw GraphRunnerError.executionError("'agent_outcome' is not an action!")
+            throw CompiledGraphError.executionError("'agent_outcome' is not an action!")
         }
         let result = try await toolExecutor( action )
         return [ "intermediate_steps" : (action, result) ]
@@ -132,7 +132,7 @@ In the [LangChainDemo](LangChainDemo) project, you can find the porting of [Agen
     try workflow.addConditionalEdge( sourceId: "call_agent", condition: { state in
         
         guard let agentOutcome = state.agentOutcome else {
-            throw GraphRunnerError.executionError("'agent_outcome' property not found in state!")
+            throw CompiledGraphError.executionError("'agent_outcome' property not found in state!")
         }
 
         switch agentOutcome {
@@ -148,9 +148,9 @@ In the [LangChainDemo](LangChainDemo) project, you can find the porting of [Agen
 
     try workflow.addEdge(sourceId: "call_action", targetId: "call_agent")
 
-    let runner = try workflow.compile()
+    let app = try workflow.compile()
     
-    let result = try await runner.invoke(inputs: [ "input": input, "chat_history": [] ])
+    let result = try await app.invoke(inputs: [ "input": input, "chat_history": [] ])
     
     print( result )
 

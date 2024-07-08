@@ -48,18 +48,18 @@ final class LangGraphTests: XCTestCase {
     }
     func testValidation() async throws {
             
-        let workflow = GraphState { BaseAgentState() }
+        let workflow = StateGraph { BaseAgentState() }
         
         XCTAssertThrowsError( try workflow.compile() ) {error in 
             print( error )
-            XCTAssertTrue(error is GraphStateError, "\(error) is not a GraphStateError")
+            XCTAssertTrue(error is StateGraphError, "\(error) is not a GraphStateError")
         }
         
         try workflow.setEntryPoint("agent_1")
 
         XCTAssertThrowsError( try workflow.compile() ) {error in
             print( error )
-            XCTAssertTrue(error is GraphStateError, "\(error) is not a GraphStateError")
+            XCTAssertTrue(error is StateGraphError, "\(error) is not a GraphStateError")
         }
         
         try workflow.addNode("agent_1") { state in
@@ -76,13 +76,13 @@ final class LangGraphTests: XCTestCase {
         
         XCTAssertThrowsError( try workflow.addEdge(sourceId: END, targetId: "agent_1") ) {error in
             print( error )
-            XCTAssertTrue(error is GraphStateError, "\(error) is not a GraphStateError")
+            XCTAssertTrue(error is StateGraphError, "\(error) is not a GraphStateError")
         }
         
         XCTAssertThrowsError(try workflow.addEdge(sourceId: "agent_1", targetId: "agent_2")) { error in
             
-            XCTAssertTrue(error is GraphStateError, "\(error) is not a GraphStateError")
-            if case GraphStateError.duplicateEdgeError(let msg) = error {
+            XCTAssertTrue(error is StateGraphError, "\(error) is not a GraphStateError")
+            if case StateGraphError.duplicateEdgeError(let msg) = error {
                 print( "EXCEPTION:", msg )
             }
             else {
@@ -100,8 +100,8 @@ final class LangGraphTests: XCTestCase {
         try workflow.addEdge(sourceId: "agent_2", targetId: "agent_3")
 
         XCTAssertThrowsError( try workflow.compile() ) {error in
-            XCTAssertTrue(error is GraphStateError, "\(error) is not a GraphStateError")
-            if case GraphStateError.missingNodeReferencedByEdge(let msg) = error {
+            XCTAssertTrue(error is StateGraphError, "\(error) is not a GraphStateError")
+            if case StateGraphError.missingNodeReferencedByEdge(let msg) = error {
                print( "EXCEPTION:", msg )
             }
             else {
@@ -114,8 +114,8 @@ final class LangGraphTests: XCTestCase {
             try workflow.addConditionalEdge(sourceId: "agent_1", condition:{ _ in return "agent_3"}, edgeMapping: [:])
         ) { error in
             
-            XCTAssertTrue(error is GraphStateError, "\(error) is not a GraphStateError")
-            if case GraphStateError.edgeMappingIsEmpty = error {
+            XCTAssertTrue(error is StateGraphError, "\(error) is not a GraphStateError")
+            if case StateGraphError.edgeMappingIsEmpty = error {
                print( "EXCEPTION:", error  )
             }
             else {
@@ -128,7 +128,7 @@ final class LangGraphTests: XCTestCase {
 
     func testRunningOneNode() async throws {
             
-        let workflow = GraphState { BaseAgentState() }
+        let workflow = StateGraph { BaseAgentState() }
         try workflow.setEntryPoint("agent_1")
         try workflow.addNode("agent_1") { state in
             
@@ -171,7 +171,7 @@ final class LangGraphTests: XCTestCase {
 
     func testRunningTreeNodes() async throws {
             
-        let workflow = GraphState { BinaryOpState() }
+        let workflow = StateGraph { BinaryOpState() }
         
         try workflow.addNode("agent_1") { state in
             
@@ -187,7 +187,7 @@ final class LangGraphTests: XCTestCase {
             
             print( "sum", state )
             guard let add1 = state.add1, let add2 = state.add2 else {
-                throw GraphRunnerError.executionError("agent state is not valid! expect 'add1', 'add2'")
+                throw CompiledGraphError.executionError("agent state is not valid! expect 'add1', 'add2'")
             }
             
             return ["result": add1 + add2 ]
@@ -209,7 +209,7 @@ final class LangGraphTests: XCTestCase {
 
     func testRunningFourNodesWithCondition() async throws {
             
-        let workflow = GraphState { BinaryOpState() }
+        let workflow = StateGraph { BinaryOpState() }
         
         try workflow.addNode("agent_1") { state in
             
@@ -225,7 +225,7 @@ final class LangGraphTests: XCTestCase {
             
             print( "sum", state )
             guard let add1 = state.add1, let add2 = state.add2 else {
-                throw GraphRunnerError.executionError("agent state is not valid! expect 'add1', 'add2'")
+                throw CompiledGraphError.executionError("agent state is not valid! expect 'add1', 'add2'")
             }
             
             return ["result": add1 + add2 ]
@@ -234,7 +234,7 @@ final class LangGraphTests: XCTestCase {
             
             print( "mul", state )
             guard let add1 = state.add1, let add2 = state.add2 else {
-                throw GraphRunnerError.executionError("agent state is not valid! expect 'add1', 'add2'")
+                throw CompiledGraphError.executionError("agent state is not valid! expect 'add1', 'add2'")
             }
             
             return ["result": add1 * add2 ]
@@ -293,7 +293,7 @@ final class LangGraphTests: XCTestCase {
 
     func testAppender() async throws {
             
-        let workflow = GraphState { AgentStateWithAppender() }
+        let workflow = StateGraph { AgentStateWithAppender() }
         
         try workflow.addNode("agent_1") { state in
             
@@ -327,7 +327,7 @@ final class LangGraphTests: XCTestCase {
 
     func testWithStream() async throws {
             
-        let workflow = GraphState { AgentStateWithAppender() }
+        let workflow = StateGraph { AgentStateWithAppender() }
         
         try workflow.addNode("agent_1") { state in
             ["messages": "message1"]
@@ -363,7 +363,7 @@ final class LangGraphTests: XCTestCase {
 
     func testWithStreamAnCancellation() async throws {
             
-        let workflow = GraphState { AgentStateWithAppender() }
+        let workflow = StateGraph { AgentStateWithAppender() }
         
         try workflow.addNode("agent_1") { state in
             try await Task.sleep(nanoseconds: 500_000_000)

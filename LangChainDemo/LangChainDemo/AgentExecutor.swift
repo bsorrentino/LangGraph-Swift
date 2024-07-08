@@ -20,7 +20,7 @@ struct AgentExecutorState : AgentState {
     
     init() {
         self.init([
-            "intermediate_steps": AppendableValue(),
+            "intermediate_steps": AppendableValue<(AgentAction, String)>(),
             "chat_history": AppendableValue()
         ])
     }
@@ -58,7 +58,7 @@ struct AgentExecutorState : AgentState {
 struct ToolOutputParser: BaseOutputParser {
     public init() {}
     public func parse(text: String) -> Parsed {
-        print(text.uppercased())
+        print("\n-------\n\(text.uppercased())\n-------\n")
         let pattern = "Action\\s*:[\\s]*(.*)[\\s]*Action\\s*Input\\s*:[\\s]*(.*)"
         let regex = try! NSRegularExpression(pattern: pattern)
         
@@ -99,7 +99,7 @@ public func runAgent( input: String, llm: LLM, tools: [BaseTool], callbacks: [Ba
     
     let toolExecutor = {  (action: AgentAction) in
         guard let tool = tools.filter({$0.name() == action.action}).first else {
-            throw GraphRunnerError.executionError("tool \(action.action) not found!")
+            throw CompiledGraphError.executionError("tool \(action.action) not found!")
         }
 
         do {
@@ -151,7 +151,7 @@ public func runAgent( input: String, llm: LLM, tools: [BaseTool], callbacks: [Ba
     }
 
     
-    let workflow = GraphState {
+    let workflow = StateGraph {
         AgentExecutorState()
     }
     
@@ -175,10 +175,10 @@ public func runAgent( input: String, llm: LLM, tools: [BaseTool], callbacks: [Ba
     try workflow.addNode("call_agent" ) { state in
         
         guard let input = state.input else {
-            throw GraphRunnerError.executionError("'input' argument not found in state!")
+            throw CompiledGraphError.executionError("'input' argument not found in state!")
         }
         guard let intermediate_steps = state.intermediate_steps else {
-            throw GraphRunnerError.executionError("'intermediate_steps' property not found in state!")
+            throw CompiledGraphError.executionError("'intermediate_steps' property not found in state!")
         }
 
         onAgentStart( input )
@@ -191,18 +191,18 @@ public func runAgent( input: String, llm: LLM, tools: [BaseTool], callbacks: [Ba
             onAgentAction( action )
             return [ "agent_outcome": AgentOutcome.action(action) ]
         default:
-            throw GraphRunnerError.executionError( "Parsed.error" )
+            throw CompiledGraphError.executionError( "Parsed.error" )
         }
     }
 
     try workflow.addNode("call_action" ) { state in
         
         guard let agentOutcome = state.agentOutcome else {
-            throw GraphRunnerError.executionError("'agent_outcome' property not found in state!")
+            throw CompiledGraphError.executionError("'agent_outcome' property not found in state!")
         }
 
         guard case .action(let action) = agentOutcome else {
-            throw GraphRunnerError.executionError("'agent_outcome' is not an action!")
+            throw CompiledGraphError.executionError("'agent_outcome' is not an action!")
         }
 
         let result = try await toolExecutor( action )
@@ -218,7 +218,7 @@ public func runAgent( input: String, llm: LLM, tools: [BaseTool], callbacks: [Ba
     try workflow.addConditionalEdge( sourceId: "call_agent", condition: { state in
         
         guard let agentOutcome = state.agentOutcome else {
-            throw GraphRunnerError.executionError("'agent_outcome' property not found in state!")
+            throw CompiledGraphError.executionError("'agent_outcome' property not found in state!")
         }
 
         return switch agentOutcome {
