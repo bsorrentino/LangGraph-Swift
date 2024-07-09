@@ -1,6 +1,24 @@
 # Changelog
 
 
+"name: v2.0.1" is a release tag
+
+## [v2.0.1](https://github.com/bsorrentino/LangGraph-Swift/releases/tag/v2.0.1) (2024-07-09)
+
+
+### Bug Fixes
+
+ -  support for custom description in custom error ([45e5243ee116326](https://github.com/bsorrentino/LangGraph-Swift/commit/45e5243ee11632614908caef34432629278591a0))
+
+
+### Documentation
+
+ -  update changelog ([4ed6e09126b2ca0](https://github.com/bsorrentino/LangGraph-Swift/commit/4ed6e09126b2ca01c3e8168c86b1eff284e6ea3e))
+
+
+
+
+
 "name: v2.0.0" is a release tag
 
 ## [v2.0.0](https://github.com/bsorrentino/LangGraph-Swift/releases/tag/v2.0.0) (2024-07-08)
