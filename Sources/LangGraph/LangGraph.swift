@@ -96,7 +96,7 @@ public struct BaseAgentState : AgentState {
     
     
 }
-public enum StateGraphError : Error {
+public enum StateGraphError : Error, LocalizedError {
     case duplicateNodeError( String )
     case duplicateEdgeError( String )
     case missingEntryPoint
@@ -108,7 +108,7 @@ public enum StateGraphError : Error {
     case invalidNodeIdentifier( String )
     case missingNodeReferencedByEdge( String )
     
-    public var localizedDescription: String {
+    public var errorDescription: String? {
         switch(self) {
         case .duplicateNodeError(let message):
             message
@@ -135,13 +135,13 @@ public enum StateGraphError : Error {
 
 }
 
-public enum CompiledGraphError : Error {
+public enum CompiledGraphError : Error, LocalizedError {
     case missingEdge( String )
     case missingNode( String )
     case missingNodeInEdgeMapping( String )
     case executionError( String )
     
-    public var localizedDescription: String {
+    public var errorDescription: String? {
         switch(self) {
         case .missingEdge(let message):
             message
