@@ -25,7 +25,7 @@ final class LangGraphTests: XCTestCase {
                     }
                 }
             }
-            if let value1 = value as? (any AppendableValueProtocol) {
+            if let value1 = value as? (any ChannelProtocol) {
                 if let values = value1.value as? [Any] {
                     if values.count == values2.count {
                         for ( v1, v2) in zip(values, values2) {
@@ -282,14 +282,14 @@ final class LangGraphTests: XCTestCase {
         var data: [String : Any]
         
         init() {
-            self.init( ["messages": AppendableValue<String>()] )
+            self.init( ["messages": AppendChannel<String>()] )
         }
         
         init(_ initState: [String : Any]) {
             data = initState
         }
         var messages:[String]? {
-            appendableValue("messages")
+            value("messages")
         }
     }
 

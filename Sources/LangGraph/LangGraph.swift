@@ -1,123 +1,60 @@
 import OSLog
 
-public typealias PartialAgentState = [String: Any]
-
 public typealias NodeAction<Action: AgentState> = ( Action ) async throws -> PartialAgentState
 public typealias EdgeCondition<Action: AgentState> = ( Action ) async throws -> String
 
-public typealias BinaryOperator<Value> = ( Value?, Value ) throws -> Value
-public typealias UnaryOperator<Value> = () -> Value
+public typealias Reducer<Value> = ( Value?, Value ) -> Value
+//public typealias UnaryOperator<Value> = () -> Value
 
-public struct Evaluator<T> {
-    var value: BinaryOperator<T>
-    var `default`: UnaryOperator<T>?
-}
-
-enum Channel<T> {
-    case Value
-    case Eval( Evaluator<T> )
-}
-
-protocol EvaluableValueProtocol {
+public protocol ChannelProtocol {
     associatedtype ItemType
-    
     var value: ItemType? { get }
-    
-    mutating func setValue( _ newValue: Any ) throws -> Void
+    func update( _ newValue: Any ) throws -> Self
 }
 
-public struct EvaluableValue<T> : EvaluableValueProtocol {
-    typealias ItemType = T
+public class Channel<T> : ChannelProtocol {
+    public var value: T?
+    public var reducer: Reducer<T>?
+//    var `default`: UnaryOperator<T>?
     
-    private var channel: Channel<Any>
-    private var _value: T?
-    
-    public var value: T? {
-        get {
-            _value
+    public func update( _ newValue: Any ) throws -> Self {
+        guard let new = newValue as? T else {
+            throw CompiledGraphError.executionError( "Channel update type mismatch!")
         }
-    }
-    
-    public init( ){
-        self.channel = Channel.Value
-    }
-
-    public init( evaluator: Evaluator<Any> ){
-        self.channel = Channel.Eval(evaluator)
-        if let defaultValue = evaluator.default {
-            self._value = defaultValue() as? T
+        if let reducer {
+            value = reducer( value, new )
         }
+        else {
+            value = new
+        }
+        return self
     }
+}
 
-    mutating func setValue( _ newValue: Any ) throws {
-        
-        switch( channel ) {
-        case .Value:
-            _value = newValue as? T
+public typealias PartialAgentState = [String: Any]
+
+
+public class AppendChannel<T> : Channel<[T]> {
+    
+    init(_ value: [T]? = nil ) {
+        super.init()
+        self.value = value
+        self.reducer = { (left, right) in
             
-        case .Eval( let evaluator ):
-            _value =  try evaluator.value( _value, newValue ) as? T
-           
-        }
-    }
-}
-
-protocol AppendableValueProtocol : EvaluableValueProtocol {
-    
-}
-
-public struct AppendableValue<T> : AppendableValueProtocol {
-    typealias ItemType = [T]
-    
-    var _value:EvaluableValue<[T]>?
-    
-    public var value: [T]? {
-        get {
-            _value?.value
-        }
-    }
-    
-    func _append( left: Any, right: Any ) throws -> Any  {
-        if let typedValues = right as? [T] {
-            guard var left = left as? [T] else {
-                return typedValues
+            guard var left else {
+                return right
             }
 
-            left.append(contentsOf: typedValues)
+            left.append(contentsOf: right)
             return left
         }
-        
-        
-        throw CompiledGraphError.executionError( "AppenderValue type mismatch!")
     }
 
-    public init() {
-        
-        let evaluator = Evaluator( value: _append )
-        _value = EvaluableValue( evaluator: evaluator )
-    }
-
-    public init( values: [T] ) {
-        let evaluator = Evaluator( value: _append) {
-            values
+    public override func update( _ newValue: Any ) throws -> Self {
+        if let new = newValue as? T  {
+            return try super.update( [new] )
         }
-        _value = EvaluableValue( evaluator: evaluator )
-    }
-    
-    mutating func setValue( _ newValue: Any ) throws {
-        if let newValue = newValue as? T {
-
-            try self._value?.setValue([newValue])
-            return
-        }
-        
-        if let newValue = newValue as? [T] {
-            
-            try self._value?.setValue( newValue )
-            return 
-        }
-        
-        throw CompiledGraphError.executionError( "AppenderValue type mismatch!")
+        return try super.update( newValue )
     }
 
 }
@@ -134,22 +71,14 @@ public protocol AgentState {
 extension AgentState {
 
     public func value<T>( _ key: String ) -> T? {
+        if let channel = data[ key ] as? Channel<T> {
+            return channel.value
+        }
+        
         return data[ key ] as? T
+        
     }
     
-    public func evaluableValue<T>(_ key: String  ) -> T? {
-        guard let eval = data[ key ] as? EvaluableValue<T> else {
-            return nil
-        }
-        return eval.value
-    }
-                
-    public func appendableValue<T>( _ key: String ) -> [T]? {
-        guard let eval = data[ key ] as? AppendableValue<T> else {
-            return nil
-        }
-        return eval.value
-    }
 }
 
 public struct NodeOutput<State: AgentState> {
@@ -166,7 +95,7 @@ public struct NodeOutput<State: AgentState> {
 public struct BaseAgentState : AgentState {
     
     subscript(key: String) -> Any? {
-        data[key]
+        value( key )
     }
     
     public var data: [String : Any]
@@ -288,10 +217,8 @@ public class StateGraph<State: AgentState>  {
             let newState = try currentState.data.merging(partialState, uniquingKeysWith: {
                 (current, new) in
                 
-                if var eval = current as? (any EvaluableValueProtocol) {
-                    try eval.setValue(new)
-                    
-                    return eval
+                if let value = current as? (any ChannelProtocol) {
+                    return try value.update( new )
                 }
                 return new
             })
