@@ -25,16 +25,6 @@ final class LangGraphTests: XCTestCase {
                     }
                 }
             }
-            if let value1 = value as? (any ChannelProtocol) {
-                if let values = value1.value as? [Any] {
-                    if values.count == values2.count {
-                        for ( v1, v2) in zip(values, values2) {
-                            return compareAsEquatable( v1, v2 )
-                        }
-                    }
-
-                }
-            }
         }
         return false
     }
@@ -279,11 +269,12 @@ final class LangGraphTests: XCTestCase {
     }
 
     struct AgentStateWithAppender : AgentState {
-        var data: [String : Any]
         
-        init() {
-            self.init( ["messages": AppendChannel<String>()] )
-        }
+        static var schema: Channels = {
+            ["messages": AppenderChannel<String>( default: { [] })]
+        }()
+        
+        var data: [String : Any]
         
         init(_ initState: [String : Any]) {
             data = initState
@@ -294,8 +285,8 @@ final class LangGraphTests: XCTestCase {
     }
 
     func testAppender() async throws {
-            
-        let workflow = StateGraph { AgentStateWithAppender() }
+        
+        let workflow = StateGraph( schema: AgentStateWithAppender.schema ) { AgentStateWithAppender( [:] ) }
         
         try workflow.addNode("agent_1") { state in
             
@@ -329,7 +320,7 @@ final class LangGraphTests: XCTestCase {
 
     func testWithStream() async throws {
             
-        let workflow = StateGraph { AgentStateWithAppender() }
+        let workflow = StateGraph( schema: AgentStateWithAppender.schema ) { AgentStateWithAppender( [:] ) }
         
         try workflow.addNode("agent_1") { state in
             ["messages": "message1"]
@@ -365,7 +356,7 @@ final class LangGraphTests: XCTestCase {
 
     func testWithStreamAnCancellation() async throws {
             
-        let workflow = StateGraph { AgentStateWithAppender() }
+        let workflow = StateGraph( schema: AgentStateWithAppender.schema ) { AgentStateWithAppender([:]) }
         
         try workflow.addNode("agent_1") { state in
             try await Task.sleep(nanoseconds: 500_000_000)

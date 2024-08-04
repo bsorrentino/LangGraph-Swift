@@ -1,63 +1,76 @@
 import OSLog
 
+public typealias PartialAgentState = [String: Any]
 public typealias NodeAction<Action: AgentState> = ( Action ) async throws -> PartialAgentState
 public typealias EdgeCondition<Action: AgentState> = ( Action ) async throws -> String
 
 public typealias Reducer<Value> = ( Value?, Value ) -> Value
-//public typealias UnaryOperator<Value> = () -> Value
+public typealias UnaryOperator<Value> = () -> Value
 
 public protocol ChannelProtocol {
-    associatedtype ItemType
-    var value: ItemType? { get }
-    func update( _ newValue: Any ) throws -> Self
+    associatedtype T
+    var reducer: Reducer<T> {  get }
+    var `default`: UnaryOperator<T> { get }
+
+    func update( oldValue: Any?, newValue: Any ) throws -> Any
 }
 
+
 public class Channel<T> : ChannelProtocol {
-    public var value: T?
-    public var reducer: Reducer<T>?
-//    var `default`: UnaryOperator<T>?
+    public var reducer: Reducer<T>
+    public var `default`: UnaryOperator<T>
     
-    public func update( _ newValue: Any ) throws -> Self {
+    public init(reducer: @escaping Reducer<T>, default defaultValueProvider: @escaping UnaryOperator<T> ) {
+        self.reducer = reducer
+        self.`default` = defaultValueProvider
+    }
+    
+    public func update( oldValue: Any?, newValue: Any ) throws -> Any {
         guard let new = newValue as? T else {
-            throw CompiledGraphError.executionError( "Channel update type mismatch!")
+            throw CompiledGraphError.executionError( "Channel update 'newValue' type mismatch!")
         }
-        if let reducer {
-            value = reducer( value, new )
+
+        var old:T
+        if oldValue == nil {
+            old = self.`default`()
         }
         else {
-            value = new
+            guard let _old = oldValue as? T else {
+                throw CompiledGraphError.executionError( "Channel update 'oldValue' type mismatch!")
+            }
+            old = _old
         }
-        return self
+
+        return reducer( old, new )
+
     }
 }
 
-public typealias PartialAgentState = [String: Any]
-
-
-public class AppendChannel<T> : Channel<[T]> {
-    
-    init(_ value: [T]? = nil ) {
-        super.init()
-        self.value = value
-        self.reducer = { (left, right) in
-            
+public class AppenderChannel<T> : Channel<[T]> {
+        
+    public init( default defaultValueProvider: @escaping UnaryOperator<[T]> = { [] } ) {
+        super.init( reducer: { left, right in
+        
             guard var left else {
                 return right
             }
-
+            
             left.append(contentsOf: right)
             return left
-        }
+        },
+        default : defaultValueProvider)
     }
-
-    public override func update( _ newValue: Any ) throws -> Self {
-        if let new = newValue as? T  {
-            return try super.update( [new] )
+    
+    public override func update( oldValue: Any?, newValue: Any ) throws -> Any {
+        if let new = newValue as? T {
+            return try super.update(oldValue: oldValue, newValue: [new] )
         }
-        return try super.update( newValue )
+        return try super.update(oldValue: oldValue, newValue: newValue )
     }
 
 }
+
+public typealias Channels = [String: any ChannelProtocol ]
 
 public protocol AgentState {
     
@@ -71,10 +84,6 @@ public protocol AgentState {
 extension AgentState {
 
     public func value<T>( _ key: String ) -> T? {
-        if let channel = data[ key ] as? Channel<T> {
-            return channel.value
-        }
-        
         return data[ key ] as? T
         
     }
@@ -94,7 +103,7 @@ public struct NodeOutput<State: AgentState> {
 
 public struct BaseAgentState : AgentState {
     
-    subscript(key: String) -> Any? {
+    public subscript(key: String) -> Any? {
         value( key )
     }
     
@@ -192,9 +201,10 @@ public class StateGraph<State: AgentState>  {
         var edges:Dictionary<String, EdgeValue>
         var entryPoint:EdgeValue
         var finishPoint:String?
-
+        let schema: Channels
+        
         init( owner: StateGraph ) {
-            
+            self.schema = owner.schema
             self.stateFactory = owner.stateFactory
             self.nodes = Dictionary()
             self.edges = Dictionary()
@@ -214,12 +224,17 @@ public class StateGraph<State: AgentState>  {
             if partialState.isEmpty {
                 return currentState
             }
-            let newState = try currentState.data.merging(partialState, uniquingKeysWith: {
-                (current, new) in
-                
-                if let value = current as? (any ChannelProtocol) {
-                    return try value.update( new )
+            
+            let _partialState = try partialState.map { key, value in
+                if let channel = schema[key] {
+                    return ( key , try channel.update( oldValue: currentState.data[key], newValue: value ))
                 }
+                return (key, value)
+                
+            }
+            let newState = currentState.data.merging(_partialState, uniquingKeysWith: {
+                (current, new) in
+                                
                 return new
             })
             return State.init(newState)
@@ -358,10 +373,12 @@ public class StateGraph<State: AgentState>  {
     private var finishPoint: String?
 
     private var stateFactory: () -> State
+    private var schema: Channels
     
-    public init( stateFactory: @escaping () -> State ) {
+    public init( schema: Channels = [:], stateFactory: @escaping () -> State ) {
+        self.schema = schema
         self.stateFactory = stateFactory
-        
+            
     }
     
     public func addNode( _ id: String, action: @escaping NodeAction<State> ) throws {
