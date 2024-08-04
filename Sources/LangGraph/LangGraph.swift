@@ -1,51 +1,76 @@
 import OSLog
 
 public typealias PartialAgentState = [String: Any]
-
 public typealias NodeAction<Action: AgentState> = ( Action ) async throws -> PartialAgentState
 public typealias EdgeCondition<Action: AgentState> = ( Action ) async throws -> String
 
-protocol AppendableValueProtocol {
-    associatedtype ItemType
+public typealias Reducer<Value> = ( Value?, Value ) -> Value
+public typealias UnaryOperator<Value> = () -> Value
+
+public protocol ChannelProtocol {
+    associatedtype T
+    var reducer: Reducer<T> {  get }
+    var `default`: UnaryOperator<T> { get }
+
+    func update( oldValue: Any?, newValue: Any ) throws -> Any
+}
+
+
+public class Channel<T> : ChannelProtocol {
+    public var reducer: Reducer<T>
+    public var `default`: UnaryOperator<T>
     
-    var array: [ItemType] { get set }
+    public init(reducer: @escaping Reducer<T>, default defaultValueProvider: @escaping UnaryOperator<T> ) {
+        self.reducer = reducer
+        self.`default` = defaultValueProvider
+    }
     
-    mutating func append( values: [Any] ) throws
-    mutating func append( value: Any ) throws
+    public func update( oldValue: Any?, newValue: Any ) throws -> Any {
+        guard let new = newValue as? T else {
+            throw CompiledGraphError.executionError( "Channel update 'newValue' type mismatch!")
+        }
+
+        var old:T
+        if oldValue == nil {
+            old = self.`default`()
+        }
+        else {
+            guard let _old = oldValue as? T else {
+                throw CompiledGraphError.executionError( "Channel update 'oldValue' type mismatch!")
+            }
+            old = _old
+        }
+
+        return reducer( old, new )
+
+    }
+}
+
+public class AppenderChannel<T> : Channel<[T]> {
+        
+    public init( default defaultValueProvider: @escaping UnaryOperator<[T]> = { [] } ) {
+        super.init( reducer: { left, right in
+        
+            guard var left else {
+                return right
+            }
+            
+            left.append(contentsOf: right)
+            return left
+        },
+        default : defaultValueProvider)
+    }
+    
+    public override func update( oldValue: Any?, newValue: Any ) throws -> Any {
+        if let new = newValue as? T {
+            return try super.update(oldValue: oldValue, newValue: [new] )
+        }
+        return try super.update(oldValue: oldValue, newValue: newValue )
+    }
 
 }
 
-public struct AppendableValue<T> : AppendableValueProtocol {
-    typealias ItemType = T
-    
-    var array: [T]
-    
-    mutating func append( value: T ) {
-        array.append(value)
-    }
-    
-    mutating func append( values: [Any] ) throws {
-        guard let typedValues = values as? [T] else {
-            throw CompiledGraphError.executionError( "AppenderValue type mismatch!")
-        }
-        array.append(contentsOf: typedValues)
-    }
-    mutating func append( value: Any ) throws {
-        guard let typedValue = value as? T else {
-            throw CompiledGraphError.executionError( "AppenderValue type mismatch!")
-        }
-        array.append(typedValue)
-    }
-
-    public init() {
-        array = []
-    }
-
-    public init( values: [T] ) {
-        array = values
-    }
-    
-}
+public typealias Channels = [String: any ChannelProtocol ]
 
 public protocol AgentState {
     
@@ -60,11 +85,9 @@ extension AgentState {
 
     public func value<T>( _ key: String ) -> T? {
         return data[ key ] as? T
+        
     }
-                
-    public func appendableValue<T>( _ key: String ) -> [T]? {
-        return (data[ key ] as? AppendableValue<T>)?.array as? [T]
-    }
+    
 }
 
 public struct NodeOutput<State: AgentState> {
@@ -80,8 +103,8 @@ public struct NodeOutput<State: AgentState> {
 
 public struct BaseAgentState : AgentState {
     
-    subscript(key: String) -> Any? {
-        data[key]
+    public subscript(key: String) -> Any? {
+        value( key )
     }
     
     public var data: [String : Any]
@@ -178,9 +201,10 @@ public class StateGraph<State: AgentState>  {
         var edges:Dictionary<String, EdgeValue>
         var entryPoint:EdgeValue
         var finishPoint:String?
-
+        let schema: Channels
+        
         init( owner: StateGraph ) {
-            
+            self.schema = owner.schema
             self.stateFactory = owner.stateFactory
             self.nodes = Dictionary()
             self.edges = Dictionary()
@@ -200,18 +224,17 @@ public class StateGraph<State: AgentState>  {
             if partialState.isEmpty {
                 return currentState
             }
-            let newState = try currentState.data.merging(partialState, uniquingKeysWith: {
-                (current, new) in
-                
-                if var appender = current as? (any AppendableValueProtocol) {
-                    if let newValue = new as? [Any] {
-                        try appender.append(values: newValue )
-                    }
-                    else {
-                        try appender.append(value: new)
-                    }
-                    return appender
+            
+            let _partialState = try partialState.map { key, value in
+                if let channel = schema[key] {
+                    return ( key , try channel.update( oldValue: currentState.data[key], newValue: value ))
                 }
+                return (key, value)
+                
+            }
+            let newState = currentState.data.merging(_partialState, uniquingKeysWith: {
+                (current, new) in
+                                
                 return new
             })
             return State.init(newState)
@@ -350,10 +373,12 @@ public class StateGraph<State: AgentState>  {
     private var finishPoint: String?
 
     private var stateFactory: () -> State
+    private var schema: Channels
     
-    public init( stateFactory: @escaping () -> State ) {
+    public init( schema: Channels = [:], stateFactory: @escaping () -> State ) {
+        self.schema = schema
         self.stateFactory = stateFactory
-        
+            
     }
     
     public func addNode( _ id: String, action: @escaping NodeAction<State> ) throws {
