@@ -62,14 +62,17 @@ In the [LangChainDemo](LangChainDemo) project, you can find the porting of [Agen
 ```Swift
 
     struct AgentExecutorState : AgentState {
+
+        // describes the properties that have particular Reducer related function
+        // AppenderChannel<T> is a built-in channel that manage array of values
+        static var schema: Channels = {
+            [
+                "intermediate_steps": AppenderChannel<(AgentAction, String)>(),
+                "chat_history": AppenderChannel<BaseMessage>(),
+            ]
+        }()
+
         var data: [String : Any]
-        
-        init() {
-            self.init([
-                "intermediate_steps": AppendableValue(),
-                "chat_history": AppendableValue()
-            ])
-        }
         
         init(_ initState: [String : Any]) {
             data = initState
@@ -80,19 +83,19 @@ In the [LangChainDemo](LangChainDemo) project, you can find the porting of [Agen
             value("input")
         }
         var chatHistory:[BaseMessage]? {
-            appendableValue("chat_history" )
+            value("chat_history" )
         }
         var agentOutcome:AgentOutcome? {
-            return value("agent_outcome")
+            value("agent_outcome")
         }     
         var intermediate_steps: [(AgentAction, String)]? {
-            appendableValue("intermediate_steps" )
+            value("intermediate_steps" )
         }   
     }
 
 
     let workflow = StateGraph {
-        AgentExecutorState()
+        AgentExecutorState($0) // $0 is the initial state provided by the graph
     }
     
     try workflow.addNode("call_agent" ) { state in

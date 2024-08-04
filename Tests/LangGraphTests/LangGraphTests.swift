@@ -25,14 +25,6 @@ final class LangGraphTests: XCTestCase {
                     }
                 }
             }
-            if let value1 = value as? (any AppendableValueProtocol) {
-                if value1.array.count == values2.count {
-                    for ( v1, v2) in zip(value1.array, values2) {
-                        return compareAsEquatable( v1, v2 )
-                    }
-                }
-
-            }
         }
         return false
     }
@@ -48,7 +40,7 @@ final class LangGraphTests: XCTestCase {
     }
     func testValidation() async throws {
             
-        let workflow = StateGraph { BaseAgentState() }
+        let workflow = StateGraph { BaseAgentState($0) }
         
         XCTAssertThrowsError( try workflow.compile() ) {error in 
             print( error )
@@ -128,7 +120,7 @@ final class LangGraphTests: XCTestCase {
 
     func testRunningOneNode() async throws {
             
-        let workflow = StateGraph { BaseAgentState() }
+        let workflow = StateGraph { BaseAgentState($0) }
         try workflow.setEntryPoint("agent_1")
         try workflow.addNode("agent_1") { state in
             
@@ -171,7 +163,7 @@ final class LangGraphTests: XCTestCase {
 
     func testRunningTreeNodes() async throws {
             
-        let workflow = StateGraph { BinaryOpState() }
+        let workflow = StateGraph { BinaryOpState($0) }
         
         try workflow.addNode("agent_1") { state in
             
@@ -209,7 +201,7 @@ final class LangGraphTests: XCTestCase {
 
     func testRunningFourNodesWithCondition() async throws {
             
-        let workflow = StateGraph { BinaryOpState() }
+        let workflow = StateGraph { BinaryOpState($0) }
         
         try workflow.addNode("agent_1") { state in
             
@@ -277,23 +269,24 @@ final class LangGraphTests: XCTestCase {
     }
 
     struct AgentStateWithAppender : AgentState {
-        var data: [String : Any]
         
-        init() {
-            self.init( ["messages": AppendableValue<String>()] )
-        }
+        static var schema: Channels = {
+            ["messages": AppenderChannel<String>( default: { [] })]
+        }()
+        
+        var data: [String : Any]
         
         init(_ initState: [String : Any]) {
             data = initState
         }
         var messages:[String]? {
-           appendableValue("messages")
+            value("messages")
         }
     }
 
     func testAppender() async throws {
-            
-        let workflow = StateGraph { AgentStateWithAppender() }
+        
+        let workflow = StateGraph( schema: AgentStateWithAppender.schema ) { AgentStateWithAppender($0) }
         
         try workflow.addNode("agent_1") { state in
             
@@ -327,7 +320,7 @@ final class LangGraphTests: XCTestCase {
 
     func testWithStream() async throws {
             
-        let workflow = StateGraph { AgentStateWithAppender() }
+        let workflow = StateGraph( schema: AgentStateWithAppender.schema ) { AgentStateWithAppender( $0 ) }
         
         try workflow.addNode("agent_1") { state in
             ["messages": "message1"]
@@ -363,7 +356,7 @@ final class LangGraphTests: XCTestCase {
 
     func testWithStreamAnCancellation() async throws {
             
-        let workflow = StateGraph { AgentStateWithAppender() }
+        let workflow = StateGraph( schema: AgentStateWithAppender.schema ) { AgentStateWithAppender($0) }
         
         try workflow.addNode("agent_1") { state in
             try await Task.sleep(nanoseconds: 500_000_000)
