@@ -1,6 +1,47 @@
 # Changelog
 
 
+
+## [Unreleased](https://github.com/bsorrentino/LangGraph-Swift/releases/tag/Unreleased) ()
+
+
+
+
+
+
+
+"name: v3.0.0" is a release tag
+
+## [v3.0.0](https://github.com/bsorrentino/LangGraph-Swift/releases/tag/v3.0.0) (2024-08-04)
+
+### Features
+
+ *  finalize Status Schema Management ([0858b51d0ccb87a](https://github.com/bsorrentino/LangGraph-Swift/commit/0858b51d0ccb87a5c22908796f9b4b48b0007880))
+     > refine Channel class
+     > update Demo
+     > refine unit test
+   
+ *  refine Channels management ([74a4768633e8caf](https://github.com/bsorrentino/LangGraph-Swift/commit/74a4768633e8cafab52940a2e75515e1afac5a2b))
+     > introducing State Schema concept
+   
+ *  add EvaluableValueProtocol ([8d6f2aabd87333e](https://github.com/bsorrentino/LangGraph-Swift/commit/8d6f2aabd87333ea445088e75f7cea80a5993596))
+   
+
+
+### Documentation
+
+ -  update readme ([30930184adf2608](https://github.com/bsorrentino/LangGraph-Swift/commit/30930184adf2608964f1f0c905c60d4a7b7a4491))
+
+ -  update changelog ([9ae23b4f4b46147](https://github.com/bsorrentino/LangGraph-Swift/commit/9ae23b4f4b46147487c1b03c6cbad985216d67b4))
+
+
+### Refactor
+
+ -  add channel management in AgentState ([2e96e05793f1748](https://github.com/bsorrentino/LangGraph-Swift/commit/2e96e05793f1748c44c7981c774fe91899019c6b))
+
+
+
+
 "name: v2.0.1" is a release tag
 
 ## [v2.0.1](https://github.com/bsorrentino/LangGraph-Swift/releases/tag/v2.0.1) (2024-07-09)
