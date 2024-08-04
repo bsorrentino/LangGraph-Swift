@@ -16,15 +16,16 @@ enum AgentOutcome /* Union */ {
 
 
 struct AgentExecutorState : AgentState {
+    
+    static var schema: Channels = {
+        [
+            "intermediate_steps": AppenderChannel<(AgentAction, String)>(),
+            "chat_history": AppenderChannel<BaseMessage>(),
+        ]
+    }()
+
     var data: [String : Any]
-    
-    init() {
-        self.init([
-            "intermediate_steps": AppendableValue<(AgentAction, String)>(),
-            "chat_history": AppendableValue()
-        ])
-    }
-    
+        
     init(_ initState: [String : Any]) {
         data = initState
     }
@@ -35,7 +36,7 @@ struct AgentExecutorState : AgentState {
     }
 
     var chatHistory:[BaseMessage]? {
-        appendableValue("chat_history" )
+        value("chat_history" )
     }
     
     var agentOutcome:AgentOutcome? {
@@ -43,7 +44,7 @@ struct AgentExecutorState : AgentState {
     }
     
     var intermediate_steps: [(AgentAction, String)]? {
-        appendableValue("intermediate_steps" )
+        value("intermediate_steps" )
     }
     
     // Tracing
@@ -151,8 +152,8 @@ public func runAgent( input: String, llm: LLM, tools: [BaseTool], callbacks: [Ba
     }
 
     
-    let workflow = StateGraph {
-        AgentExecutorState()
+    let workflow = StateGraph( schema: AgentExecutorState.schema ) {
+        AgentExecutorState( $0 )
     }
     
     try workflow.addNode( "call_start" ) { state in

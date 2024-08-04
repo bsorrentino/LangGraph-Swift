@@ -5,22 +5,24 @@ public typealias NodeAction<Action: AgentState> = ( Action ) async throws -> Par
 public typealias EdgeCondition<Action: AgentState> = ( Action ) async throws -> String
 
 public typealias Reducer<Value> = ( Value?, Value ) -> Value
-public typealias UnaryOperator<Value> = () -> Value
+public typealias DefaultProvider<Value> = () -> Value
+
+public typealias StateFactory<State: AgentState> = ( [String: Any] ) -> State
 
 public protocol ChannelProtocol {
     associatedtype T
-    var reducer: Reducer<T> {  get }
-    var `default`: UnaryOperator<T> { get }
+    var reducer: Reducer<T>? {  get }
+    var `default`: DefaultProvider<T>? { get }
 
     func update( oldValue: Any?, newValue: Any ) throws -> Any
 }
 
 
 public class Channel<T> : ChannelProtocol {
-    public var reducer: Reducer<T>
-    public var `default`: UnaryOperator<T>
+    public var reducer: Reducer<T>?
+    public var `default`: DefaultProvider<T>?
     
-    public init(reducer: @escaping Reducer<T>, default defaultValueProvider: @escaping UnaryOperator<T> ) {
+    public init(reducer: Reducer<T>? = nil, default defaultValueProvider: DefaultProvider<T>? = nil ) {
         self.reducer = reducer
         self.`default` = defaultValueProvider
     }
@@ -30,9 +32,11 @@ public class Channel<T> : ChannelProtocol {
             throw CompiledGraphError.executionError( "Channel update 'newValue' type mismatch!")
         }
 
-        var old:T
+        var old:T?
         if oldValue == nil {
-            old = self.`default`()
+            if let `default` {
+                old = `default`()
+            }
         }
         else {
             guard let _old = oldValue as? T else {
@@ -41,15 +45,19 @@ public class Channel<T> : ChannelProtocol {
             old = _old
         }
 
-        return reducer( old, new )
+        if let reducer {
+            return reducer( old, new )
+        }
+        return new
 
     }
 }
 
 public class AppenderChannel<T> : Channel<[T]> {
         
-    public init( default defaultValueProvider: @escaping UnaryOperator<[T]> = { [] } ) {
-        super.init( reducer: { left, right in
+    public init( default defaultValueProvider: @escaping DefaultProvider<[T]> = { [] } ) {
+        super.init()
+        self.reducer = { left, right in
         
             guard var left else {
                 return right
@@ -57,8 +65,8 @@ public class AppenderChannel<T> : Channel<[T]> {
             
             left.append(contentsOf: right)
             return left
-        },
-        default : defaultValueProvider)
+        }
+        self.default = defaultValueProvider
     }
     
     public override func update( oldValue: Any?, newValue: Any ) throws -> Any {
@@ -196,7 +204,7 @@ public class StateGraph<State: AgentState>  {
     
     public class CompiledGraph {
     
-        var stateFactory: () -> State
+        var stateFactory: StateFactory<State>
         var nodes:Dictionary<String, NodeAction<State>>
         var edges:Dictionary<String, EdgeValue>
         var entryPoint:EdgeValue
@@ -220,19 +228,45 @@ public class StateGraph<State: AgentState>  {
             }
         }
         
+        private func initStateDataFromSchema() -> [String: Any] {
+            let mappedValues = schema.compactMap { key, channel in
+                if let def = channel.`default` {
+                    return ( key, def() )
+                }
+                return nil
+            }
+            
+            return Dictionary(uniqueKeysWithValues: mappedValues)
+        }
+        
+        private func updatePartialStateFromSchema( currentState: State, partialState: PartialAgentState ) throws -> PartialAgentState {
+            let mappedValues  = try partialState.map { key, value in
+                if let channel = schema[key] {
+                    
+                    do {
+                        let newValue = try channel.update( oldValue: currentState.data[key], newValue: value )
+                        return ( key, newValue )
+                    }
+                    catch CompiledGraphError.executionError( let message ){
+                        throw CompiledGraphError.executionError( "error processing property: '\(key)' - \(message)")
+                    }
+                    
+                }
+                return (key, value)
+            }
+            
+            return Dictionary( uniqueKeysWithValues: mappedValues)
+
+        }
+        
         private func mergeState( currentState: State, partialState: PartialAgentState ) throws -> State {
             if partialState.isEmpty {
                 return currentState
             }
             
-            let _partialState = try partialState.map { key, value in
-                if let channel = schema[key] {
-                    return ( key , try channel.update( oldValue: currentState.data[key], newValue: value ))
-                }
-                return (key, value)
-                
-            }
-            let newState = currentState.data.merging(_partialState, uniquingKeysWith: {
+            let partialSchemaUpdated = try updatePartialStateFromSchema( currentState: currentState, partialState: partialState)
+            
+            let newState = currentState.data.merging(partialSchemaUpdated, uniquingKeysWith: {
                 (current, new) in
                                 
                 return new
@@ -273,7 +307,11 @@ public class StateGraph<State: AgentState>  {
             Task {
                 
                 do {
-                    var currentState = try mergeState( currentState: self.stateFactory(), partialState: inputs)
+                
+                    let initData = initStateDataFromSchema()
+                    
+                    var currentState = try mergeState( currentState: self.stateFactory( initData ), partialState: inputs)
+                    
                     var currentNodeId = try await self.getEntryPoint(agentState: currentState )
 
                     repeat {
@@ -372,10 +410,10 @@ public class StateGraph<State: AgentState>  {
     private var entryPoint: EdgeValue?
     private var finishPoint: String?
 
-    private var stateFactory: () -> State
+    private var stateFactory: StateFactory<State>
     private var schema: Channels
     
-    public init( schema: Channels = [:], stateFactory: @escaping () -> State ) {
+    public init( schema: Channels = [:], stateFactory: @escaping StateFactory<State> ) {
         self.schema = schema
         self.stateFactory = stateFactory
             
