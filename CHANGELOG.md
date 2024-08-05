@@ -1,11 +1,26 @@
 # Changelog
 
 
+"name: v3.0.1" is a release tag
 
-## [Unreleased](https://github.com/bsorrentino/LangGraph-Swift/releases/tag/Unreleased) ()
+## [v3.0.1](https://github.com/bsorrentino/LangGraph-Swift/releases/tag/v3.0.1) (2024-08-05)
 
 
 
+### Documentation
+
+ -  update readme ([92354f0ea426863](https://github.com/bsorrentino/LangGraph-Swift/commit/92354f0ea426863e310a0241c356cef79006cd99))
+
+ -  update changelog ([aa46ca9085224fa](https://github.com/bsorrentino/LangGraph-Swift/commit/aa46ca9085224faf7b15c43bcf0258c866a1f245))
+
+
+### Refactor
+
+ -  rename param name 'schema' to 'channels' ([1f449590227b3e8](https://github.com/bsorrentino/LangGraph-Swift/commit/1f449590227b3e8595a196510b98dc5e6fdf34df))
+     > langgraph.js compliance
+
+ -  rename param name 'schema' to 'channels' ([49a8a0a246ae707](https://github.com/bsorrentino/LangGraph-Swift/commit/49a8a0a246ae707f3539974791cadcc2209e3cc9))
+     > langgraph.js compliance
 
 
 
