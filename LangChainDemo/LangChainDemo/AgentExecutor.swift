@@ -152,7 +152,7 @@ public func runAgent( input: String, llm: LLM, tools: [BaseTool], callbacks: [Ba
     }
 
     
-    let workflow = StateGraph( schema: AgentExecutorState.schema ) {
+    let workflow = StateGraph( channels: AgentExecutorState.schema ) {
         AgentExecutorState( $0 )
     }
     
