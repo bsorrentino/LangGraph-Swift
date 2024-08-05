@@ -9,7 +9,7 @@
 To use the LangGraph for Swift library in a [SwiftPM] project, add the following line to the dependencies in your `Package.swift` file:
 
 ```Swift
-.package(url: "https://github.com/bsorrentino/LangGraph-Swift.git", from: "1.0.0"),
+.package(url: "https://github.com/bsorrentino/LangGraph-Swift.git", from: "3.0.1"),
 ```
 Include `LangGraph` as a dependency for your executable target:
 
@@ -94,10 +94,10 @@ In the [LangChainDemo](LangChainDemo) project, you can find the porting of [Agen
     }
 
 
-    let workflow = StateGraph {
-        AgentExecutorState($0) // $0 is the initial state provided by the graph
+    let workflow = StateGraph( channels: AgentExecutorState.schema ) {
+        AgentExecutorState( $0 )
     }
-    
+        
     try workflow.addNode("call_agent" ) { state in
         
         guard let input = state.input else {

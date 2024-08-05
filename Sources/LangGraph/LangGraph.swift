@@ -212,7 +212,7 @@ public class StateGraph<State: AgentState>  {
         let schema: Channels
         
         init( owner: StateGraph ) {
-            self.schema = owner.schema
+            self.schema = owner.channels
             self.stateFactory = owner.stateFactory
             self.nodes = Dictionary()
             self.edges = Dictionary()
@@ -411,10 +411,10 @@ public class StateGraph<State: AgentState>  {
     private var finishPoint: String?
 
     private var stateFactory: StateFactory<State>
-    private var schema: Channels
+    private var channels: Channels
     
-    public init( schema: Channels = [:], stateFactory: @escaping StateFactory<State> ) {
-        self.schema = schema
+    public init( channels: Channels = [:], stateFactory: @escaping StateFactory<State> ) {
+        self.channels = channels
         self.stateFactory = stateFactory
             
     }

@@ -286,7 +286,7 @@ final class LangGraphTests: XCTestCase {
 
     func testAppender() async throws {
         
-        let workflow = StateGraph( schema: AgentStateWithAppender.schema ) { AgentStateWithAppender($0) }
+        let workflow = StateGraph( channels: AgentStateWithAppender.schema ) { AgentStateWithAppender($0) }
         
         try workflow.addNode("agent_1") { state in
             
@@ -320,7 +320,7 @@ final class LangGraphTests: XCTestCase {
 
     func testWithStream() async throws {
             
-        let workflow = StateGraph( schema: AgentStateWithAppender.schema ) { AgentStateWithAppender( $0 ) }
+        let workflow = StateGraph( channels: AgentStateWithAppender.schema ) { AgentStateWithAppender( $0 ) }
         
         try workflow.addNode("agent_1") { state in
             ["messages": "message1"]
@@ -356,7 +356,7 @@ final class LangGraphTests: XCTestCase {
 
     func testWithStreamAnCancellation() async throws {
             
-        let workflow = StateGraph( schema: AgentStateWithAppender.schema ) { AgentStateWithAppender($0) }
+        let workflow = StateGraph( channels: AgentStateWithAppender.schema ) { AgentStateWithAppender($0) }
         
         try workflow.addNode("agent_1") { state in
             try await Task.sleep(nanoseconds: 500_000_000)
