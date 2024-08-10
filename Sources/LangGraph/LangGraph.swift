@@ -186,6 +186,7 @@ public enum CompiledGraphError : Error, LocalizedError {
     }
 }
 
+public let START = "__START__" // id of the edge staring workflow
 public let END = "__END__" // id of the edge ending workflow
 
 //enum Either<Left, Right> {
@@ -419,7 +420,7 @@ public class StateGraph<State: AgentState>  {
             
     }
     
-    public func addNode( _ id: String, action: @escaping NodeAction<State> ) throws {
+    public func addNode( _ id: String, action: @escaping NodeAction<State> ) throws  {
         guard id != END else {
             throw StateGraphError.invalidNodeIdentifier( "END is not a valid node id!")
         }
@@ -433,6 +434,13 @@ public class StateGraph<State: AgentState>  {
     public func addEdge( sourceId: String, targetId: String ) throws {
         guard sourceId != END else {
             throw StateGraphError.invalidEdgeIdentifier( "END is not a valid edge sourceId!")
+        }
+        guard sourceId != START else {
+            if targetId == END  {
+                throw StateGraphError.invalidNodeIdentifier( "END is not a valid node entry point!")
+            }
+            entryPoint = EdgeValue.id(targetId)
+            return
         }
 
         let edge = Edge(sourceId: sourceId, target: .id(targetId) )
@@ -448,25 +456,30 @@ public class StateGraph<State: AgentState>  {
         if edgeMapping.isEmpty {
             throw StateGraphError.edgeMappingIsEmpty
         }
+        guard sourceId != START else {
+            entryPoint = EdgeValue.condition((condition, edgeMapping))
+            return
+        }
 
         let edge = Edge(sourceId: sourceId, target: .condition(( condition, edgeMapping)) )
         if edges.contains(edge) {
             throw StateGraphError.duplicateEdgeError("edge with id:\(sourceId) already exist!")
         }
         edges.insert( edge)
+        return
     }
+    
+    @available(*, deprecated, message: "This method is deprecated. Use `addEdge( START, nodeId )` instead.")
     public func setEntryPoint( _ nodeId: String ) throws {
-        guard nodeId != END else {
-            throw StateGraphError.invalidNodeIdentifier( "END is not a valid node entry point!")
-        }
-        entryPoint = EdgeValue.id(nodeId)
+        let _ = try addEdge( sourceId: START, targetId: nodeId )
     }
+
+    @available(*, deprecated, message: "This method is deprecated. Use `addConditionalEdge( START, condition, edgeMappings )` instead.")
     public func setConditionalEntryPoint( condition: @escaping EdgeCondition<State>, edgeMapping: [String:String] ) throws {
-        if edgeMapping.isEmpty {
-            throw StateGraphError.edgeMappingIsEmpty
-        }
-        entryPoint = EdgeValue.condition((condition, edgeMapping))
+        let _ = try self.addConditionalEdge(sourceId: START, condition: condition, edgeMapping: edgeMapping )
     }
+    
+    @available(*, deprecated, message: "This method is deprecated. Use `addEdge( nodeId, END )` instead.")
     public func setFinishPoint( _ nodeId: String ) {
         finishPoint = nodeId
     }

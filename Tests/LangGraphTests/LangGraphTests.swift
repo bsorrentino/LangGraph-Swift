@@ -47,7 +47,7 @@ final class LangGraphTests: XCTestCase {
             XCTAssertTrue(error is StateGraphError, "\(error) is not a GraphStateError")
         }
         
-        try workflow.setEntryPoint("agent_1")
+        try workflow.addEdge(sourceId: START, targetId: "agent_1")
 
         XCTAssertThrowsError( try workflow.compile() ) {error in
             print( error )
@@ -121,7 +121,7 @@ final class LangGraphTests: XCTestCase {
     func testRunningOneNode() async throws {
             
         let workflow = StateGraph { BaseAgentState($0) }
-        try workflow.setEntryPoint("agent_1")
+        try workflow.addEdge( sourceId: START, targetId: "agent_1")
         try workflow.addNode("agent_1") { state in
             
             print( "agent_1", state )
@@ -188,8 +188,8 @@ final class LangGraphTests: XCTestCase {
         try workflow.addEdge(sourceId: "agent_1", targetId: "agent_2")
         try workflow.addEdge(sourceId: "agent_2", targetId: "sum")
 
-        try workflow.setEntryPoint("agent_1")
-        workflow.setFinishPoint("sum")
+        try workflow.addEdge( sourceId: START, targetId: "agent_1")
+        try workflow.addEdge(sourceId: "sum", targetId: END )
 
         let app = try workflow.compile()
         
@@ -255,7 +255,7 @@ final class LangGraphTests: XCTestCase {
         try workflow.addEdge(sourceId: "sum", targetId: END)
         try workflow.addEdge(sourceId: "mul", targetId: END)
         
-        try workflow.setEntryPoint("agent_1")
+        try workflow.addEdge(sourceId: START, targetId: "agent_1")
 
         let app = try workflow.compile()
         
@@ -306,8 +306,8 @@ final class LangGraphTests: XCTestCase {
         try workflow.addEdge(sourceId: "agent_1", targetId: "agent_2")
         try workflow.addEdge(sourceId: "agent_2", targetId: "agent_3")
 
-        try workflow.setEntryPoint("agent_1")
-        workflow.setFinishPoint("agent_3")
+        try workflow.addEdge(sourceId: START, targetId: "agent_1")
+        try workflow.addEdge(sourceId: "agent_3", targetId: END)
 
         let app = try workflow.compile()
         
@@ -335,8 +335,8 @@ final class LangGraphTests: XCTestCase {
         try workflow.addEdge(sourceId: "agent_1", targetId: "agent_2")
         try workflow.addEdge(sourceId: "agent_2", targetId: "agent_3")
 
-        try workflow.setEntryPoint("agent_1")
-        workflow.setFinishPoint("agent_3")
+        try workflow.addEdge(sourceId: START, targetId: "agent_1")
+        try workflow.addEdge(sourceId: "agent_3", targetId: END)
 
         let app = try workflow.compile()
                 
@@ -374,8 +374,8 @@ final class LangGraphTests: XCTestCase {
         try workflow.addEdge(sourceId: "agent_1", targetId: "agent_2")
         try workflow.addEdge(sourceId: "agent_2", targetId: "agent_3")
 
-        try workflow.setEntryPoint("agent_1")
-        workflow.setFinishPoint("agent_3")
+        try workflow.addEdge(sourceId: START, targetId: "agent_1")
+        try workflow.addEdge(sourceId: "agent_3", targetId: END)
 
         let app = try workflow.compile()
             
