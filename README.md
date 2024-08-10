@@ -25,8 +25,8 @@
 - [ ] Breakpoints (_pause and resume feature_)
 - [ ] Graph migration
 - [ ] Graph visualization
-  - [] [PlantUML]
-  - [] [Mermaid]
+  - [ ] [PlantUML]
+  - [ ] [Mermaid]
 
 ## Quick Start 
 
@@ -196,3 +196,5 @@ In the [LangChainDemo](LangChainDemo) project, you can find the porting of [Agen
 [langchain.ai]: https://github.com/langchain-ai
 [langgraph]: https://github.com/langchain-ai/langgraph
 [AgentExecutor]: https://github.com/buhe/langchain-swift/blob/main/Sources/LangChain/agents/Agent.swift
+[PlantUML]: https://plantuml.com
+[Mermaid]: https://mermaid.js.org
