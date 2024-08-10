@@ -1,15 +1,6 @@
 # Changelog
 
 
-
-## [Unreleased](https://github.com/bsorrentino/LangGraph-Swift/releases/tag/Unreleased) ()
-
-
-
-
-
-
-
 "name: v3.0.2" is a release tag
 
 ## [v3.0.2](https://github.com/bsorrentino/LangGraph-Swift/releases/tag/v3.0.2) (2024-08-10)
