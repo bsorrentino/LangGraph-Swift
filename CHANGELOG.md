@@ -1,6 +1,26 @@
 # Changelog
 
 
+"name: v3.0.2" is a release tag
+
+## [v3.0.2](https://github.com/bsorrentino/LangGraph-Swift/releases/tag/v3.0.2) (2024-08-10)
+
+
+
+### Documentation
+
+ -  update readme ([14856ffa5338921](https://github.com/bsorrentino/LangGraph-Swift/commit/14856ffa53389213a7266e5add4bf3241149c3e1))
+
+ -  update readme ([d950c0175d37343](https://github.com/bsorrentino/LangGraph-Swift/commit/d950c0175d373439c7abe16be6b6daf17600cc89))
+
+
+### Refactor
+
+ -  deprecate setEntryPoint, setConditionalEntryPoint and setFinishPoint ([286315d59dd9425](https://github.com/bsorrentino/LangGraph-Swift/commit/286315d59dd94256ae085b59260d7a05c9685681))
+
+
+
+
 "name: v3.0.1" is a release tag
 
 ## [v3.0.1](https://github.com/bsorrentino/LangGraph-Swift/releases/tag/v3.0.1) (2024-08-05)
