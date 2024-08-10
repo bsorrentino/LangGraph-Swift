@@ -6,7 +6,11 @@
   "scripts": {
     "changelog": "git-changelog-command-line -of CHANGELOG.md"
   },
-  "keywords": ["AI", "langgraph", "langchain"],
+  "keywords": [
+    "AI",
+    "langgraph",
+    "langchain"
+  ],
   "author": "bsorrentino <bartolomeo.sorrentino@gmail.com> (http://soulsoftware-bsc.blogspot.it/)",
   "license": "MIT"
 }
