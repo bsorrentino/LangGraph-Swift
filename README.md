@@ -1,6 +1,32 @@
 # LangGraph for Swift
+
 🚀 LangGraph for Swift. A library for building stateful, multi-actor applications with LLMs, developed to work with [LangChain-Swift]. 
 > It is a porting of original [LangGraph] from [LangChain AI project][langchain.ai] in Swift fashion
+
+## Features
+
+- [x] StateGraph
+- [x] Nodes
+- [x] Edges
+- [x] Conditional Edges
+- [x] Entry Points
+- [x] Conditional Entry Points
+- [x] State
+  - [x] Schema (_a series of Channels_)
+    - [x] Reducer (_how apply  updates to the state attributes_)
+    - [x] Default provider
+    - [x] AppenderChannel (_values accumulator_)
+- [x] Compiling graph    
+- [x] Async support 
+- [x] Streaming support 
+- [ ] Checkpoints (_save and replay feature_)
+- [ ] Threads (_checkpointing of multiple different runs_)
+- [ ] Update state (_interact with the state directly and update it_)
+- [ ] Breakpoints (_pause and resume feature_)
+- [ ] Graph migration
+- [ ] Graph visualization
+  - [] [PlantUML]
+  - [] [Mermaid]
 
 ## Quick Start 
 
