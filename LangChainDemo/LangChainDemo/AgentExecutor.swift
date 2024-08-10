@@ -211,8 +211,8 @@ public func runAgent( input: String, llm: LLM, tools: [BaseTool], callbacks: [Ba
         return [ "intermediate_steps" : (action, result) ]
     }
 
-    try workflow.setEntryPoint("call_start")
-    workflow.setFinishPoint("call_end")
+    try workflow.addEdge(sourceId: START, targetId: "call_start")
+    try workflow.addEdge(sourceId: "call_end", targetId: END)
     
     try workflow.addEdge(sourceId: "call_start", targetId: "call_agent")
     try workflow.addEdge(sourceId: "call_action", targetId: "call_agent")

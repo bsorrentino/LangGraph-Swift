@@ -156,8 +156,8 @@ In the [LangChainDemo](LangChainDemo) project, you can find the porting of [Agen
         return [ "intermediate_steps" : (action, result) ]
     }
 
-    try workflow.setEntryPoint("call_agent")
-    
+    try workflow.addEdge(sourceId: START, targetId: "call_agent")
+
     try workflow.addConditionalEdge( sourceId: "call_agent", condition: { state in
         
         guard let agentOutcome = state.agentOutcome else {
