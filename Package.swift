@@ -17,6 +17,7 @@ let package = Package(
     ],
     dependencies: [
 //        .package(url: "https://github.com/apple/swift-async-algorithms", from: "1.0.0"),
+        .package(url: "https://github.com/apple/swift-docc-plugin", branch: "main"),
     ],
     targets: [
         // Targets are the basic building blocks of a package, defining a module or a test suite.
@@ -24,7 +25,12 @@ let package = Package(
         .target(
             name: "LangGraph", dependencies: [
 //                .product(name: "AsyncAlgorithms", package: "swift-async-algorithms"),
-            ], resources: [ .process("Resources")]),
+            ], 
+            resources: [ .process("Resources")]
+//            plugins: [
+//                .plugin(name: "Swift-DocC", package: "swift-docc-plugin")
+//            ]
+        ),
         .testTarget(
             name: "LangGraphTests",
             dependencies: ["LangGraph"]),
