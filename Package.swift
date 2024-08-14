@@ -26,8 +26,8 @@ let package = Package(
             name: "LangGraph", dependencies: [
 //                .product(name: "AsyncAlgorithms", package: "swift-async-algorithms"),
             ], 
-            resources: [ .process("Resources")],
-            exclude: ["LangChainDemo", "Tests", "docs"]
+            exclude: ["LangChainDemo", "Tests", "docs"],
+            resources: [.process("Resources")]
 //            plugins: [
 //                .plugin(name: "Swift-DocC", package: "swift-docc-plugin")
 //            ]
