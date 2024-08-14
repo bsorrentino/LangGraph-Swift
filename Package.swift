@@ -23,10 +23,11 @@ let package = Package(
         // Targets are the basic building blocks of a package, defining a module or a test suite.
         // Targets can depend on other targets in this package and products from dependencies.
         .target(
-            name: "LangGraph", dependencies: [
+            name: "LangGraph", 
+            dependencies: [
 //                .product(name: "AsyncAlgorithms", package: "swift-async-algorithms"),
             ], 
-            exclude: ["LangChainDemo", "Tests", "docs"],
+            exclude: ["/LangChainDemo", "/Tests", "/docs"],
             resources: [.process("Resources")]
 //            plugins: [
 //                .plugin(name: "Swift-DocC", package: "swift-docc-plugin")
