@@ -1,5 +1,8 @@
 # LangGraph for Swift
 
+![SwiftPM](https://img.shields.io/badge/SwiftPM-Compatible-green) ![GitHub tag (latest by semver)](https://img.shields.io/github/v/tag/bsorrentino/LangGraph-Swift?sort=semver) [![DocC](https://img.shields.io/badge/DocC-Documentation-blue)][docc] 
+
+
 🚀 LangGraph for Swift. A library for building stateful, multi-actor applications with LLMs, developed to work with [LangChain-Swift]. 
 > It is a porting of original [LangGraph] from [LangChain AI project][langchain.ai] in Swift fashion
 
@@ -189,7 +192,7 @@ In the [LangChainDemo](LangChainDemo) project, you can find the porting of [Agen
 
 * [AI Agent on iOS with LangGraph for Swift](https://dev.to/bsorrentino/ai-agent-on-ios-with-langgraph-for-swift-1740)
 
-
+[docc]: https://bsorrentino.github.io/LangGraph-Swift/documentation/langgraph/
 [article1]: https://dev.to/bsorrentino/ai-agent-on-ios-with-langgraph-for-swift-1740
 [SwiftPM]: https://www.swift.org/documentation/package-manager/
 [langchain-swift]: https://github.com/buhe/langchain-swift.git
