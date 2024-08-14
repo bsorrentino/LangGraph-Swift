@@ -117,5 +117,6 @@ swift package \
     --target LangGraph \
     --disable-indexing \
     --transform-for-static-hosting \
+    --hosting-base-path LangGraph-Swift \
     --output-path ./docs
 
