@@ -27,7 +27,7 @@ let package = Package(
             dependencies: [
 //                .product(name: "AsyncAlgorithms", package: "swift-async-algorithms"),
             ], 
-            exclude: ["/LangChainDemo", "/Tests", "/docs"],
+            exclude: ["../../LangChainDemo", "../../Tests", "../../docs"],
             resources: [.process("Resources")]
 //            plugins: [
 //                .plugin(name: "Swift-DocC", package: "swift-docc-plugin")
