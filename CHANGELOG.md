@@ -1,6 +1,51 @@
 # Changelog
 
 
+"name: v3.1.0" is a release tag
+
+## [v3.1.0](https://github.com/bsorrentino/LangGraph-Swift/releases/tag/v3.1.0) (2024-08-15)
+
+
+### Bug Fixes
+
+ -  add exclude argumant in target following the right sequence ([868d3a01fda16fa](https://github.com/bsorrentino/LangGraph-Swift/commit/868d3a01fda16fa9ea56b5b57037e49438b74ec1))
+
+
+### Documentation
+
+ -  update readme ([2887a29f0cd9dde](https://github.com/bsorrentino/LangGraph-Swift/commit/2887a29f0cd9dded3cfb4bf0ec07b134f168bc96))
+
+ -  update package documentation ([ae397c1915e8402](https://github.com/bsorrentino/LangGraph-Swift/commit/ae397c1915e840222d0f9f41c3cd179b94f41aec))
+
+ -  update package documentation ([47e4891c3b2a707](https://github.com/bsorrentino/LangGraph-Swift/commit/47e4891c3b2a707b7ed120fe5b62b95c394b2a85))
+
+ -  update package documentation ([86de0d7f700b2b6](https://github.com/bsorrentino/LangGraph-Swift/commit/86de0d7f700b2b6ab9c85f3740ec9c0518ae2c0b))
+
+ -  add generated docc documentation ([a3d1cc5c9b25d16](https://github.com/bsorrentino/LangGraph-Swift/commit/a3d1cc5c9b25d163f80a41b343b3dfdb948b7735))
+
+ -  add code documentation ([9e6ce90efe8f0e7](https://github.com/bsorrentino/LangGraph-Swift/commit/9e6ce90efe8f0e7d603bf28064acc20b22dd16be))
+     > add swift-docc-plugin
+
+ -  update changeme ([2bb9383860337de](https://github.com/bsorrentino/LangGraph-Swift/commit/2bb9383860337decae7d6e07ef97e891c2487f5f))
+
+ -  update changeme ([fffe6f16aee7e7c](https://github.com/bsorrentino/LangGraph-Swift/commit/fffe6f16aee7e7c3f31ed57e4103387252beb03a))
+
+
+### Refactor
+
+ -  **ChannelProtocol**  rename method  update to updateAttribute ([8203b8cfa63acc7](https://github.com/bsorrentino/LangGraph-Swift/commit/8203b8cfa63acc7e1a805cd9bb8ebc2ba9b67f58))
+
+ -  add throws to DefaultProvider ([660bd6326678dec](https://github.com/bsorrentino/LangGraph-Swift/commit/660bd6326678dec6f79eea37a589a16273932255))
+
+
+### ALM 
+
+ -  update exclude path ([aa5752b4f892652](https://github.com/bsorrentino/LangGraph-Swift/commit/aa5752b4f892652adf90cc47cedeb98660dfb05b))
+
+ -  add changelog update shell ([7c4de5d36b0c4be](https://github.com/bsorrentino/LangGraph-Swift/commit/7c4de5d36b0c4be40008b1f905e1d286c1ee1f01))
+
+
+
 "name: v3.0.2" is a release tag
 
 ## [v3.0.2](https://github.com/bsorrentino/LangGraph-Swift/releases/tag/v3.0.2) (2024-08-10)
