@@ -38,7 +38,7 @@
 To use the LangGraph for Swift library in a [SwiftPM] project, add the following line to the dependencies in your `Package.swift` file:
 
 ```Swift
-.package(url: "https://github.com/bsorrentino/LangGraph-Swift.git", from: "3.0.1"),
+.package(url: "https://github.com/bsorrentino/LangGraph-Swift.git", from: "<last version>"),
 ```
 Include `LangGraph` as a dependency for your executable target:
 

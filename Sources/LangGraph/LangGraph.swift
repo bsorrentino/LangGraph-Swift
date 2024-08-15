@@ -37,7 +37,7 @@ public typealias Reducer<Value> = (Value?, Value) -> Value
  
  - Returns: A default value.
  */
-public typealias DefaultProvider<Value> = () -> Value
+public typealias DefaultProvider<Value> = () throws -> Value
 
 /**
  A typealias representing a factory for creating agent states.
@@ -64,12 +64,13 @@ public protocol ChannelProtocol {
      Updates the channel with a new value.
      
      - Parameters:
+        - name: The name of attribute that will be updated.
         - oldValue: The old value of the channel.
         - newValue: The new value to update the channel with.
      - Throws: An error if the update fails.
      - Returns: The updated value.
      */
-    func update(oldValue: Any?, newValue: Any) throws -> Any
+    func updateAttribute(_ name: String, oldValue: Any?, newValue: Any) throws -> Any
 }
 /**
  A class representing a communication channel that conforms to `ChannelProtocol`.
@@ -108,29 +109,38 @@ public class Channel<T> : ChannelProtocol {
      mismatches and provides default values when necessary.
      
      - Parameters:
+        - name: The name of attribute that will be updated.
         - oldValue: The old value of the channel, which can be `nil`.
         - newValue: The new value to update the channel with.
      - Throws: An error if the update fails due to type mismatches.
      - Returns: The updated value.
      */
-    public func update( oldValue: Any?, newValue: Any ) throws -> Any {
+    public func updateAttribute( _ name: String, oldValue: Any?, newValue: Any ) throws -> Any {
         guard let new = newValue as? T else {
-            throw CompiledGraphError.executionError( "Channel update 'newValue' type mismatch!")
+            throw CompiledGraphError.executionError( "Channel: Type mismatch updating 'newValue' for property \(name)!")
         }
 
+//        var old:T?
+//        if oldValue == nil {
+//            if let `default` {
+//                old = try `default`()
+//            }
+//        }
+//        else {
+//            guard let _old = oldValue as? T else {
+//                throw CompiledGraphError.executionError( "Channel update 'oldValue' type mismatch!")
+//            }
+//            old = _old
+//        }
+        
         var old:T?
-        if oldValue == nil {
-            if let `default` {
-                old = `default`()
-            }
-        }
-        else {
+        if( oldValue != nil ) {
             guard let _old = oldValue as? T else {
                 throw CompiledGraphError.executionError( "Channel update 'oldValue' type mismatch!")
             }
             old = _old
         }
-
+        
         if let reducer {
             return reducer( old, new )
         }
@@ -177,16 +187,17 @@ public class AppenderChannel<T> : Channel<[T]> {
      If the new value is a single element, it is converted to an array before appending.
      
      - Parameters:
+        - name: The name of attribute that will be updated.
         - oldValue: The old value of the channel, which can be `nil`.
         - newValue: The new value to update the channel with.
      - Throws: An error if the update fails due to type mismatches.
      - Returns: The updated value.
      */
-    public override func update(oldValue: Any?, newValue: Any) throws -> Any {
+    public override func updateAttribute( _ name: String, oldValue: Any?, newValue: Any) throws -> Any {
         if let new = newValue as? T {
-            return try super.update(oldValue: oldValue, newValue: [new])
+            return try super.updateAttribute( name, oldValue: oldValue, newValue: [new])
         }
-        return try super.update(oldValue: oldValue, newValue: newValue)
+        return try super.updateAttribute( name, oldValue: oldValue, newValue: newValue)
     }
 }
 
@@ -731,10 +742,10 @@ extension StateGraph {
          
          - Returns: A dictionary representing the initial state data.
          */
-        private func initStateDataFromSchema() -> [String: Any] {
-            let mappedValues = schema.compactMap { key, channel in
+        private func initStateDataFromSchema() throws -> [String: Any] {
+            let mappedValues = try schema.compactMap { key, channel in
                 if let def = channel.`default` {
-                    return (key, def())
+                    return (key, try def())
                 }
                 return nil
             }
@@ -755,7 +766,7 @@ extension StateGraph {
             let mappedValues = try partialState.map { key, value in
                 if let channel = schema[key] {
                     do {
-                        let newValue = try channel.update(oldValue: currentState.data[key], newValue: value)
+                        let newValue = try channel.updateAttribute( key, oldValue: currentState.data[key], newValue: value)
                         return (key, newValue)
                     } catch CompiledGraphError.executionError(let message) {
                         throw CompiledGraphError.executionError("error processing property: '\(key)' - \(message)")
@@ -853,7 +864,7 @@ extension StateGraph {
             
             Task {
                 do {
-                    let initData = initStateDataFromSchema()
+                    let initData = try initStateDataFromSchema()
                     var currentState = try mergeState(currentState: self.stateFactory(initData), partialState: inputs)
                     var currentNodeId = try await self.getEntryPoint(agentState: currentState)
 
