@@ -37,7 +37,7 @@ public typealias Reducer<Value> = (Value?, Value) -> Value
  
  - Returns: A default value.
  */
-public typealias DefaultProvider<Value> = () -> Value
+public typealias DefaultProvider<Value> = () throws -> Value
 
 /**
  A typealias representing a factory for creating agent states.
@@ -118,19 +118,27 @@ public class Channel<T> : ChannelProtocol {
             throw CompiledGraphError.executionError( "Channel update 'newValue' type mismatch!")
         }
 
+//        var old:T?
+//        if oldValue == nil {
+//            if let `default` {
+//                old = try `default`()
+//            }
+//        }
+//        else {
+//            guard let _old = oldValue as? T else {
+//                throw CompiledGraphError.executionError( "Channel update 'oldValue' type mismatch!")
+//            }
+//            old = _old
+//        }
+        
         var old:T?
-        if oldValue == nil {
-            if let `default` {
-                old = `default`()
-            }
-        }
-        else {
+        if( oldValue != nil ) {
             guard let _old = oldValue as? T else {
                 throw CompiledGraphError.executionError( "Channel update 'oldValue' type mismatch!")
             }
             old = _old
         }
-
+        
         if let reducer {
             return reducer( old, new )
         }
@@ -731,10 +739,10 @@ extension StateGraph {
          
          - Returns: A dictionary representing the initial state data.
          */
-        private func initStateDataFromSchema() -> [String: Any] {
-            let mappedValues = schema.compactMap { key, channel in
+        private func initStateDataFromSchema() throws -> [String: Any] {
+            let mappedValues = try schema.compactMap { key, channel in
                 if let def = channel.`default` {
-                    return (key, def())
+                    return (key, try def())
                 }
                 return nil
             }
@@ -853,7 +861,7 @@ extension StateGraph {
             
             Task {
                 do {
-                    let initData = initStateDataFromSchema()
+                    let initData = try initStateDataFromSchema()
                     var currentState = try mergeState(currentState: self.stateFactory(initData), partialState: inputs)
                     var currentNodeId = try await self.getEntryPoint(agentState: currentState)
 
