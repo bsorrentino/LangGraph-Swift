@@ -543,6 +543,17 @@ public class StateGraph<State: AgentState>  {
         nodes.insert( node )
     }
     
+    public func addNode( _ id: String, subgraph: StateGraph<State>.CompiledGraph ) throws  {
+
+        let node = Node(id: id, action: { state in
+            return [ "_subgraph" : subgraph.stream(inputs: state.data) ]
+        })
+        if nodes.contains(node) {
+            throw StateGraphError.duplicateNodeError("node with id:\(id) already exist!")
+        }
+        nodes.insert( node )
+    }
+
     /// Adds an edge to the state graph.
     ///
     /// - Parameters:
@@ -852,6 +863,29 @@ extension StateGraph {
         }
 
         /**
+         Finds the first embedded stream in a partial state.
+
+         This method scans a `PartialAgentState` dictionary to find the first value that is an
+         `AsyncThrowingStream` of `NodeOutput<State>`. It then returns a tuple containing the key
+         associated with the stream and the stream itself.
+
+         - Parameter partialState: A dictionary representing a partial state of the agent,
+           where each key-value pair represents an attribute and its corresponding value.
+
+         - Returns: A tuple containing the key and the embedded stream if found, or `nil`
+           if no such stream exists. The stream is cast to the appropriate type
+           (`AsyncThrowingStream<NodeOutput<State>, Error>`).
+        */
+        private func findEmbedStream( partialState:PartialAgentState ) -> (String, AsyncThrowingStream<NodeOutput<State>, Error>)? {
+            
+            partialState.filter { (_ , value ) in
+                value is AsyncThrowingStream<NodeOutput<State>, Error>
+            }.map({ (key, value ) in
+                ( key, value as! AsyncThrowingStream<NodeOutput<State>, Error>)
+            }).first
+        }
+        
+        /**
          Streams the node outputs based on the given inputs.
          
          - Parameters:
@@ -880,7 +914,27 @@ extension StateGraph {
                         
                         try Task.checkCancellation()
                         let partialState = try await action(currentState)
-                        currentState = try mergeState(currentState: currentState, partialState: partialState)
+                        
+                        // Support embed stream
+                        if let (key, embed ) = findEmbedStream(partialState: partialState) {
+                            var currentStateEmbed:State?
+                            for try await output in embed {
+                                try Task.checkCancellation()
+                                continuation.yield(output)
+                                currentStateEmbed = output.state
+                            }
+                            guard let currentStateEmbed  else {
+                                continuation.finish(throwing: CompiledGraphError.executionError("failed iterate on embed stream! last state is nil"))
+                                return
+                            }
+                            currentState = try mergeState(currentState: currentStateEmbed,
+                                                          partialState: partialState.filter( { $0.key != key } ))
+                        }
+                        else {
+                            currentState = try mergeState(currentState: currentState,
+                                                          partialState: partialState)
+                        }
+                        
                         let output = NodeOutput(node: currentNodeId, state: currentState)
                         
                         try Task.checkCancellation()
