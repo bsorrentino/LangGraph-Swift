@@ -22,6 +22,7 @@
 - [x] Compiling graph    
 - [x] Async support 
 - [x] Streaming support 
+- [x] Subgraph support 
 - [ ] Checkpoints (_save and replay feature_)
 - [ ] Threads (_checkpointing of multiple different runs_)
 - [ ] Update state (_interact with the state directly and update it_)
