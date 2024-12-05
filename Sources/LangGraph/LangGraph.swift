@@ -543,15 +543,35 @@ public class StateGraph<State: AgentState>  {
         nodes.insert( node )
     }
     
-    public func addNode( _ id: String, subgraph: StateGraph<State>.CompiledGraph ) throws  {
+    /**
+     Adds a node to the state graph, representing a subgraph.
 
+     This method allows the creation of a node in the state graph that is associated with
+     a precompiled subgraph (`StateGraph.CompiledGraph`). The node's action will invoke
+     the subgraph and return its output as part of the current graph's execution.
+
+     - Parameters:
+        - id: A `String` representing the identifier of the node to be added.
+        - subgraph: An instance of `StateGraph.CompiledGraph` representing the subgraph to be executed by this node.
+     - Throws:
+        - `StateGraphError.duplicateNodeError` if a node with the same identifier already exists.
+     
+     - Note: The subgraph's outputs are represented as an embedded stream within the current graph's execution.
+     */
+    public func addNode(_ id: String, subgraph: StateGraph<State>.CompiledGraph) throws {
+        // Create a new node with the specified ID. Its action invokes the subgraph
+        // and streams its output as part of the state graph's execution.
         let node = Node(id: id, action: { state in
-            return [ "_subgraph" : subgraph.stream(inputs: state.data) ]
+            return ["_subgraph": subgraph.stream(inputs: state.data)]
         })
+        
+        // Check if a node with the same ID already exists, throwing an error if so.
         if nodes.contains(node) {
             throw StateGraphError.duplicateNodeError("node with id:\(id) already exist!")
         }
-        nodes.insert( node )
+        
+        // Add the newly created node to the set of nodes in the state graph.
+        nodes.insert(node)
     }
 
     /// Adds an edge to the state graph.
