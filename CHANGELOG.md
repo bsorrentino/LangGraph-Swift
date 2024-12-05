@@ -1,6 +1,41 @@
 # Changelog
 
 
+"name: v3.2.0" is a release tag
+
+## [v3.2.0](https://github.com/bsorrentino/LangGraph-Swift/releases/tag/v3.2.0) (2024-12-05)
+
+### Features
+
+ *  **LangGraph.swift**  add support for subgraphs and embedded streams ([18803f157c12e4c](https://github.com/bsorrentino/LangGraph-Swift/commit/18803f157c12e4c2d148dafd2a8ebd947c3cab5b))
+     > Add a method &#x60;addNode&#x60; to allow adding nodes that contain subgraphs, and modify the existing stream processing logic to
+     > handle embedded streams within these nodes. This enables more complex graph structures and parallel processing of multiple
+     > data streams within a single node.
+     > - Add &#x60;addNode&#x60; method to support subgraphs
+     > - Modify stream processing to handle embedded streams within subgraph nodes
+     > - Refactor some parts of the code for better readability and maintainability (Use arrow keys)
+     > resolve #6 #7
+   
+
+
+### Documentation
+
+ -  update readme ([9c8fa3aa612e5df](https://github.com/bsorrentino/LangGraph-Swift/commit/9c8fa3aa612e5df091ee63377fc62c120ab92dcb))
+
+ -  add documentation to method addNode(String, StateGraph<State>.CompiledGraph) ([b61cad7a640f8c1](https://github.com/bsorrentino/LangGraph-Swift/commit/b61cad7a640f8c1020624b2cda79c0a80630fcb8))
+
+ -  update package documentation ([808e4ea2015bace](https://github.com/bsorrentino/LangGraph-Swift/commit/808e4ea2015bace354aa408cd9bf3660ade9ef89))
+
+ -  update changeme ([359731642c9d2df](https://github.com/bsorrentino/LangGraph-Swift/commit/359731642c9d2df78df7e3b21533aa9fc054b90c))
+
+
+### Refactor
+
+ -  add eternal package SwiftyACE, removing the local one ([7dc4588a0980d7d](https://github.com/bsorrentino/LangGraph-Swift/commit/7dc4588a0980d7ddcc2e577a154299e0f0e3095b))
+
+
+
+
 "name: v3.1.0" is a release tag
 
 ## [v3.1.0](https://github.com/bsorrentino/LangGraph-Swift/releases/tag/v3.1.0) (2024-08-15)
