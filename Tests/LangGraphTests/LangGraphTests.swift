@@ -404,4 +404,88 @@ final class LangGraphTests: XCTestCase {
         XCTAssertEqual( ["agent_1", "agent_2" ], nodesInvolved)
     }
 
+    
+    func testWithSubgraph() async throws {
+        
+        let childWorkflow = StateGraph( channels: AgentStateWithAppender.schema ) {
+            AgentStateWithAppender( $0 )
+        }
+        
+        try childWorkflow.addNode("child:agent_1") { state in
+            ["messages": "child::message1"]
+        }
+        try childWorkflow.addNode("child:agent_2") { state in
+            ["messages": ["child::message2"] ]
+        }
+        try childWorkflow.addNode("child:agent_3") { state in
+            ["messages": "child::message3", "result": state.messages?.count ?? 0]
+        }
+
+        try childWorkflow.addEdge(sourceId: "child:agent_1", targetId: "child:agent_2")
+        try childWorkflow.addEdge(sourceId: "child:agent_2", targetId: "child:agent_3")
+
+        try childWorkflow.addEdge(sourceId: START, targetId: "child:agent_1")
+        try childWorkflow.addEdge(sourceId: "child:agent_3", targetId: END)
+
+
+        let workflowParent = StateGraph( channels: AgentStateWithAppender.schema ) {
+            AgentStateWithAppender( $0 )
+        }
+        
+        try workflowParent.addNode("agent_1") { state in
+            ["messages": "parent:message1"]
+        }
+        try workflowParent.addNode("agent_2") { state in
+            ["messages": ["parent:message2", "parent:message2.1"] ]
+        }
+        try workflowParent.addNode("agent_3") { state in
+            ["messages": "parent::message3", "result": state.messages?.count ?? 0]
+        }
+        try workflowParent.addNode("subgraph", subgraph: childWorkflow.compile())
+
+        try workflowParent.addEdge(sourceId: "agent_1", targetId: "agent_2")
+        try workflowParent.addEdge(sourceId: "agent_2", targetId: "subgraph")
+        try workflowParent.addEdge(sourceId: "subgraph", targetId: "agent_3")
+
+        try workflowParent.addEdge(sourceId: START, targetId: "agent_1")
+        try workflowParent.addEdge(sourceId: "agent_3", targetId: END)
+
+        let app = try workflowParent.compile()
+                
+        let initValue:( lastState:AgentStateWithAppender?, nodesInvolved:[String]) = ( nil, [] )
+        
+        let result =
+            try await app.stream(inputs: [:] ).reduce( initValue, { partialResult, output in
+                                    
+                    print( "-------------")
+                    print( "Agent Output of \(output.node)" )
+                    print( output.state )
+                    print( "-------------")
+
+                return ( output.state,  partialResult.1 + [output.node ] )
+            })
+        
+        XCTAssertEqual( ["agent_1",
+                         "agent_2",
+                         "child:agent_1",
+                         "child:agent_2",
+                         "child:agent_3",
+                         "subgraph",
+                         "agent_3"],
+                        result.nodesInvolved)
+        XCTAssertNotNil(result.lastState )
+        XCTAssertEqual( 6, result.lastState!.value("result") )
+        XCTAssertNotNil(result.lastState!.messages )
+        XCTAssertEqual( 7, result.lastState!.messages!.count )
+        XCTAssertEqual( ["parent:message1",
+                         "parent:message2",
+                         "parent:message2.1",
+                            "child::message1",
+                            "child::message2",
+                            "child::message3",
+                         "parent::message3"],
+                        result.lastState!.messages)
+    }
+
+
 }
