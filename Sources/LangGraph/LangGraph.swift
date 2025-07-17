@@ -237,6 +237,30 @@ extension AgentState {
     
 }
 
+func updateState( currentState: [String: Any], partialState: [String: Any], channels: Channels ) throws -> [String: Any] {
+    let mappedValues = try partialState.map { key, value in
+        if let channel = channels[key] {
+            do {
+                let newValue = try channel.updateAttribute( key, oldValue: currentState[key], newValue: value)
+                return (key, newValue)
+            } catch CompiledGraphError.executionError(let message) {
+                throw CompiledGraphError.executionError("error processing property: '\(key)' - \(message)")
+            }
+        }
+        return (key, value)
+    }
+    
+    return Dictionary(uniqueKeysWithValues: mappedValues)
+}
+
+
+extension AgentState {
+    
+    func updateStateData( partialState: [String: Any], channels: Channels ) throws -> [String: Any] {
+        return try LangGraph.updateState( currentState: data, partialState: partialState, channels: channels )
+    }
+
+}
 /// A structure representing the output of a node in a state graph.
 ///
 /// `NodeOutput` encapsulates the node identifier and its associated state.
@@ -293,7 +317,17 @@ public struct BaseAgentState: AgentState {
     public init(_ initState: [String: Any]) {
         data = initState
     }
+    
 }
+
+public struct CompileConfig {}
+
+public struct RunnableConfig {
+    var threadId: String?;
+    var checkpointId: UUID?
+    var nextNode: String?
+}
+
 /**
  An enumeration representing various errors that can occur in a `StateGraph`.
 
@@ -794,19 +828,7 @@ extension StateGraph {
          - Returns: The updated partial state.
          */
         private func updatePartialStateFromSchema(currentState: State, partialState: PartialAgentState) throws -> PartialAgentState {
-            let mappedValues = try partialState.map { key, value in
-                if let channel = schema[key] {
-                    do {
-                        let newValue = try channel.updateAttribute( key, oldValue: currentState.data[key], newValue: value)
-                        return (key, newValue)
-                    } catch CompiledGraphError.executionError(let message) {
-                        throw CompiledGraphError.executionError("error processing property: '\(key)' - \(message)")
-                    }
-                }
-                return (key, value)
-            }
-            
-            return Dictionary(uniqueKeysWithValues: mappedValues)
+            return try currentState.updateStateData(partialState: partialState, channels: schema)
         }
         
         /**
