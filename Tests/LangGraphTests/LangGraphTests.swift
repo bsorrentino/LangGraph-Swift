@@ -1,5 +1,58 @@
 import XCTest
 @testable import LangGraph
+import Testing
+
+
+
+func compareAsEquatable(_ value: Any, _ expectedValue: Any) -> Bool {
+    if let value1 = value as? Int, let value2 = expectedValue as? Int {
+        return value1 == value2
+    }
+    if let value1 = value as? String, let value2 = expectedValue as? String {
+        return value1 == value2
+    }
+    if let values2 = expectedValue as? [Any] {
+        if let values1 = value as? [Any] {
+            if values1.count == values2.count {
+                for ( v1, v2) in zip(values1, values2) {
+                    return compareAsEquatable( v1, v2 )
+                }
+            }
+        }
+    }
+    return false
+}
+
+struct BinaryOpState : AgentState {
+    var data: [String : Any]
+    
+    init() {
+        data = ["add1": 0, "add2": 0 ]
+    }
+    
+    init(_ initState: [String : Any]) {
+        data = initState
+    }
+    var op:String? {
+        data["op"] as? String
+    }
+
+    var add1:Int? {
+        data["add1"] as? Int
+    }
+    var add2:Int? {
+        data["add2"] as? Int
+    }
+}
+
+func assertDictionaryOfAnyEqual( _ expected: [String:Any], _ current: [String:Any] ) {
+    #expect(current.count == expected.count, "the dictionaries have different size")
+    for (key, value) in current {
+        
+        #expect( compareAsEquatable(value, expected[key]!) )
+        
+    }
+
 
 
 // XCTest Documentation
@@ -9,33 +62,6 @@ import XCTest
 // https://developer.apple.com/documentation/xctest/defining_test_cases_and_test_methods
 final class LangGraphTests: XCTestCase {
     
-
-    func compareAsEquatable(_ value: Any, _ expectedValue: Any) -> Bool {
-        if let value1 = value as? Int, let value2 = expectedValue as? Int {
-            return value1 == value2
-        }
-        if let value1 = value as? String, let value2 = expectedValue as? String {
-            return value1 == value2
-        }
-        if let values2 = expectedValue as? [Any] {
-            if let values1 = value as? [Any] {
-                if values1.count == values2.count {
-                    for ( v1, v2) in zip(values1, values2) {
-                        return compareAsEquatable( v1, v2 )
-                    }
-                }
-            }
-        }
-        return false
-    }
-    
-    func assertDictionaryOfAnyEqual( _ expected: [String:Any], _ current: [String:Any] ) {
-        XCTAssertEqual(current.count, expected.count, "the dictionaries have different size")
-        for (key, value) in current {
-            
-            XCTAssertTrue( compareAsEquatable(value, expected[key]!) )
-            
-        }
 
     }
     func testValidation() async throws {
@@ -139,27 +165,6 @@ final class LangGraphTests: XCTestCase {
         
     }
 
-    struct BinaryOpState : AgentState {
-        var data: [String : Any]
-        
-        init() {
-            data = ["add1": 0, "add2": 0 ]
-        }
-        
-        init(_ initState: [String : Any]) {
-            data = initState
-        }
-        var op:String? {
-            data["op"] as? String
-        }
-
-        var add1:Int? {
-            data["add1"] as? Int
-        }
-        var add2:Int? {
-            data["add2"] as? Int
-        }
-    }
 
     func testRunningTreeNodes() async throws {
             
@@ -487,5 +492,87 @@ final class LangGraphTests: XCTestCase {
                         result.lastState!.messages)
     }
 
+
+}
+
+@Test("Codable State Data")
+func testCodableStateData() async throws {
+    
+    let state: [String: Any] = [
+        "name": "Alice",
+        "age": 30,
+        "metadata": ["active": true, "tags": ["swift", "ios"]] as [String: Any],
+        "invalid": URLSession.shared // non-Encodable
+    ]
+    
+    let data = try encodeStateData(encoder: JSONEncoder(), state: state )
+    
+    let decodedState = try decodeStateData(decoder: JSONDecoder(), from: data)
+    
+    #expect(decodedState.count == state.count - 1)
+    #expect(decodedState["name"] as? String == "Alice")
+    #expect(decodedState["age"] as? Int == 30)
+    #expect(decodedState["invalid"]  == nil)
+    let metadata = (decodedState["metadata"] as? [String: Any])
+    #expect( metadata != nil)
+    #expect( metadata!.count  == 2)
+    #expect( metadata!["active"] as? Bool  == true)
+    #expect( (metadata!["tags"] as? [String]) == ["swift", "ios"])
+
+
+}
+
+@Test
+func testRunningWithCheckpoint() async throws {
+    let saver = MemoryCheckpointSaver()
+    
+    let workflow = StateGraph { BinaryOpState($0) }
+    
+    try workflow.addNode("agent_1") { state in
+        print( "agent_1", state )
+        return ["add1": 37]
+    }
+    try workflow.addNode("agent_2") { state in
+        print( "agent_2", state )
+        return ["add2": 10]
+    }
+    try workflow.addNode("sum") { state in
+        print( "sum", state )
+        guard let add1 = state.add1, let add2 = state.add2 else {
+            throw CompiledGraphError.executionError("agent state is not valid! expect 'add1', 'add2'")
+        }
+        
+        return ["result": add1 + add2 ]
+    }
+
+    try workflow.addEdge(sourceId: "agent_1", targetId: "agent_2")
+    try workflow.addEdge(sourceId: "agent_2", targetId: "sum")
+
+    try workflow.addEdge( sourceId: START, targetId: "agent_1")
+    try workflow.addEdge(sourceId: "sum", targetId: END )
+
+    let config = CompileConfig(checkpointSaver: saver)
+    
+    let app = try workflow.compile( config: config )
+    
+    let runnableConfig = RunnableConfig()
+    
+    let initValue:( lastState:BinaryOpState?, nodesInvolved:[String]) = ( nil, [] )
+    let result = try await app.stream(inputs: [ : ], config: runnableConfig ).reduce( initValue, { partialResult, output in
+        
+        print( output )
+        
+        return ( output.state,  partialResult.1 + [output.node ] )
+    })
+    
+    assertDictionaryOfAnyEqual( ["add1": 37, "add2": 10, "result":  47 ], result.lastState!.data )
+
+    #expect( saver.list(config: runnableConfig).count == 4 )
+    
+    saver.list(config: runnableConfig).forEach { print( $0 ) }
+    
+    let lastCheckpoint = saver.list(config: runnableConfig).first
+    
+    #expect( lastCheckpoint?.nodeId == START )
 
 }

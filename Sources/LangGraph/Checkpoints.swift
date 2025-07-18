@@ -1,11 +1,17 @@
 import Foundation
 
+
 /// Represents a checkpoint of an agent state.
 ///
 /// The checkpoint is an immutable object that holds an agent state
 /// and a string that represents the next state.
 /// It is designed to be serializable and restorable.
-public struct Checkpoint {
+public struct Checkpoint : Equatable  {
+    
+    public static func == (lhs: Checkpoint, rhs: Checkpoint) -> Bool {
+        lhs.id == rhs.id
+    }
+    
     let id: UUID
     var state: [String: Any]
     var nodeId: String
@@ -18,9 +24,37 @@ public struct Checkpoint {
         self.nextNodeId = nextNodeId
     }
 
-    mutating func updateState(values: [String: Any], channels: Channels) throws {
+    mutating func updateState(values: PartialAgentState, channels: Channels) throws {
         
         self.state = try LangGraph.updateState(currentState: self.state , partialState: values , channels: channels)
+    }
+}
+
+extension Checkpoint: Codable {
+    private enum CodingKeys: String, CodingKey {
+        case id
+        case state
+        case nodeId
+        case nextNodeId
+    }
+
+    public init(from decoder: any Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        
+        id = try container.decode(UUID.self, forKey: .id)
+        state = try container.decode([String: LangGraph.AnyDecodable].self, forKey: .state).mapValues { $0.value }
+        nodeId = try container.decode(String.self, forKey: .nodeId)
+        nextNodeId = try container.decode(String.self, forKey: .nextNodeId)
+    }
+    
+    public func encode(to encoder: any Encoder) throws {
+        
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(id, forKey: .id)
+        try container.encode( toEncodableStateData(data: state), forKey: .state)
+        try container.encode(nodeId, forKey: .nodeId)
+        try container.encode(nextNodeId, forKey: .nextNodeId)
+        
     }
 }
 
