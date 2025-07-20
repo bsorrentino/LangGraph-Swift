@@ -48,6 +48,13 @@ public typealias DefaultProvider<Value> = () throws -> Value
  */
 public typealias StateFactory<State: AgentState> = ([String: Any]) -> State
 
+/// Update Struct
+//func updated <T> (_ value: T, with update: (inout T) -> Void) -> T {
+//    var editable = value
+//    update(&editable)
+//    return editable
+//}
+
 // A type-erasing wrapper for any Encodable value
 struct AnyEncodable: Encodable {
     let value: Encodable
@@ -383,6 +390,10 @@ public struct NodeOutput<State: AgentState> {
     }
 }
 
+public enum GraphInput {
+    case args([String: Any])
+    case resume
+}
 
 /// A structure representing the base state of an agent.
 ///
@@ -419,10 +430,11 @@ public struct BaseAgentState: AgentState {
 
 public struct CompileConfig {
     var checkpointSaver: CheckpointSaver?
+    let interruptionsBefore: [String]
     
-    
-    public init(checkpointSaver: CheckpointSaver? ) {
+    public init(checkpointSaver: CheckpointSaver? = nil, interruptionsBefore: [String] = []  ) {
         self.checkpointSaver = checkpointSaver
+        self.interruptionsBefore = interruptionsBefore
     }
 }
 
@@ -436,6 +448,18 @@ public struct RunnableConfig {
         self.threadId = threadId
         self.verbose = verbose
     }
+    
+    
+}
+
+extension RunnableConfig {
+
+    public func with( update: (inout Self) -> Void) -> Self {
+        var editable = self
+        update(&editable)
+        return editable
+    }
+
 }
 
 /**
@@ -708,7 +732,7 @@ public class StateGraph<State: AgentState>  {
         // Create a new node with the specified ID. Its action invokes the subgraph
         // and streams its output as part of the state graph's execution.
         let node = Node(id: id, action: { state in
-            return ["_subgraph": subgraph.stream(inputs: state.data)]
+            return ["_subgraph": subgraph.stream( .args(state.data) ) ]
         })
         
         // Check if a node with the same ID already exists, throwing an error if so.
@@ -812,7 +836,16 @@ public class StateGraph<State: AgentState>  {
     /// - Returns: A `CompiledGraph` instance representing the compiled state graph.
     public func compile( config: CompileConfig? = nil ) throws -> CompiledGraph {
         
-        self.compileConfig = config
+        if let config {
+            self.compileConfig = config
+            
+            for interruption in config.interruptionsBefore {
+                
+                guard nodes.first( where: { $0.id == interruption } ) != nil else  {
+                    throw StateGraphError.missingNodeInEdgeMapping( "interruptionBefore contains a not existent nodeId \(interruption)!")
+                }
+            }
+        }
         
         guard let entryPoint else {
             throw StateGraphError.missingEntryPoint
@@ -981,7 +1014,7 @@ extension StateGraph {
          - Throws: An error if the next node ID cannot be determined.
          - Returns: The next node ID.
          */
-        private func nextNodeId(route: EdgeValue?, agentState: State, nodeId: String) async throws -> String {
+        private func fetchNextNodeId(route: EdgeValue?, agentState: State, nodeId: String) async throws -> String {
             guard let route else {
                 throw CompiledGraphError.missingEdge("edge with node: \(nodeId) not found!")
             }
@@ -1007,8 +1040,8 @@ extension StateGraph {
          - Throws: An error if the next node ID cannot be determined.
          - Returns: The next node ID.
          */
-        private func nextNodeId(nodeId: String, agentState: State) async throws -> String {
-            try await nextNodeId(route: edges[nodeId], agentState: agentState, nodeId: nodeId)
+        private func fetchNextNodeId(nodeId: String, agentState: State) async throws -> String {
+            try await fetchNextNodeId(route: edges[nodeId], agentState: agentState, nodeId: nodeId)
         }
 
         /**
@@ -1019,7 +1052,7 @@ extension StateGraph {
          - Returns: The entry point node ID.
          */
         private func getEntryPoint(agentState: State) async throws -> String {
-            try await nextNodeId(route: self.entryPoint, agentState: agentState, nodeId: "entryPoint")
+            try await fetchNextNodeId(route: self.entryPoint, agentState: agentState, nodeId: "entryPoint")
         }
 
         /**
@@ -1053,25 +1086,65 @@ extension StateGraph {
             - verbose: A boolean indicating whether to enable verbose logging.
          - Returns: An `AsyncThrowingStream` of `NodeOutput<State>`.
          */
-        public func stream(inputs: PartialAgentState, config: RunnableConfig = .init() ) -> AsyncThrowingStream<NodeOutput<State>, Error> {
+        public func stream( _ input: GraphInput, config: RunnableConfig = .init() ) -> AsyncThrowingStream<NodeOutput<State>, Error> {
             let (stream, continuation) = AsyncThrowingStream.makeStream(of: NodeOutput<State>.self, throwing: Error.self)
             
             Task {
                 do {
-                    let initData = try initStateDataFromSchema()
-                    var currentState = try mergeState(currentState: self.stateFactory(initData), partialState: inputs)
-                    var currentNodeId = try await self.getEntryPoint(agentState: currentState)
-
-                    // Add Checkpoint
-                    if let saver = compileConfig?.checkpointSaver {
+                    
+                    var currentState: State
+                    var currentNodeId: String
+                    var nextNodeId: String
+                    var isFirstStepAfterResume: Bool
+                    
+                    switch input {
+                    case .args(let inputArgs):
                         
-                        let _ = try saver.put(config: config,
-                                              checkpoint: .init(state: currentState.data.clone(),
-                                                    nodeId: START,
-                                                    nextNodeId: currentNodeId))
+                        let initData = try initStateDataFromSchema()
+                        
+                        currentState = try mergeState(currentState: self.stateFactory(initData), partialState: inputArgs)
+                        
+                        currentNodeId = try await self.getEntryPoint(agentState: currentState)
+                        nextNodeId = currentNodeId
+                        
+                        // Add Checkpoint
+                        if let saver = compileConfig?.checkpointSaver {
+                            
+                            let _ = try saver.put(config: config,
+                                                  checkpoint: .init(state: currentState.data.clone(),
+                                                        nodeId: START,
+                                                        nextNodeId: currentNodeId))
+                        }
+
+                        isFirstStepAfterResume = false
+                    case .resume:
+                        
+                        guard let saver = compileConfig?.checkpointSaver else {
+                            throw CompiledGraphError.executionError("Resume request without a checkpoint saver!")
+                        }
+                        guard let startCheckpoint = saver.get( config: config ) else {
+                            throw CompiledGraphError.executionError("Resume request without a checkpoint!")
+                        }
+                        
+                        currentState = stateFactory(startCheckpoint.state);
+                        
+                        currentNodeId = startCheckpoint.nodeId
+                        nextNodeId = startCheckpoint.nextNodeId
+                        
+                        isFirstStepAfterResume = true
                     }
                     
                     repeat {
+                        
+                        if let interruptionsBefore = compileConfig?.interruptionsBefore  {
+                            if( !isFirstStepAfterResume && interruptionsBefore.contains(nextNodeId) ) {
+                                break;
+                            }
+                            isFirstStepAfterResume = false
+                        }
+                        
+                        currentNodeId = nextNodeId;
+
                         guard let action = nodes[currentNodeId] else {
                             continuation.finish(throwing: CompiledGraphError.missingNode("node: \(currentNodeId) not found!"))
                             break
@@ -1124,7 +1197,7 @@ extension StateGraph {
                             break
                         }
                         
-                        let nextNodeId = try await nextNodeId(nodeId: currentNodeId, agentState: currentState)
+                        nextNodeId = try await fetchNextNodeId(nodeId: currentNodeId, agentState: currentState)
                         
                         // Add Checkpoint
                         if let saver = compileConfig?.checkpointSaver {
@@ -1137,9 +1210,8 @@ extension StateGraph {
                         
                         continuation.yield(output)
                         
-                        currentNodeId = nextNodeId;
 
-                    } while(currentNodeId != END && !Task.isCancelled)
+                    } while(nextNodeId != END && !Task.isCancelled)
                     
                     continuation.finish()
                 } catch {
@@ -1159,9 +1231,9 @@ extension StateGraph {
          - Throws: An error if the invocation fails.
          - Returns: The final state.
          */
-        public func invoke(inputs: PartialAgentState, config: RunnableConfig = .init() ) async throws -> State {
+        public func invoke( _ input: GraphInput, config: RunnableConfig = .init() ) async throws -> State {
             let initResult: [NodeOutput<State>] = []
-            let result = try await stream(inputs: inputs, config: config ).reduce(initResult, { partialResult, output in
+            let result = try await stream( input, config: config ).reduce(initResult, { partialResult, output in
                 [output]
             })
             if result.isEmpty {

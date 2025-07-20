@@ -1,6 +1,19 @@
 import Foundation
 
 
+public enum CheckpointError: Error, LocalizedError {
+    
+    case missingThreadIdentifier(String)
+    
+    public var errorDescription: String? {
+        switch self {
+        case .missingThreadIdentifier(let message):
+            return message
+        }
+    }
+
+}
+
 /// Represents a checkpoint of an agent state.
 ///
 /// The checkpoint is an immutable object that holds an agent state
@@ -59,25 +72,59 @@ extension Checkpoint: Codable {
 }
 
 public struct Tag {
-    var threadId: String
-    var checkpoints: [Checkpoint]
+    let threadId: String
+    let checkpoints: AnyCollection<Checkpoint>
 }
 
-
+/// A protocol that defines an interface for saving and retrieving `Checkpoint` instances.
+///
+/// Conforming types manage checkpoint data associated with a specific `RunnableConfig`,
+/// allowing retrieval, update, listing, and release of checkpoints. This protocol enables
+/// persistence strategies to be customized for different runtime environments or threading models.
 public protocol CheckpointSaver {
-    
+    /// Returns all checkpoints associated with the provided `RunnableConfig`.
+    ///
+    /// - Parameter config: The configuration that identifies the context or thread.
+    /// - Returns: A collection of `Checkpoint` instances.
     func list(config: RunnableConfig) -> AnyCollection<Checkpoint>;
 
+    /// Retrieves a specific checkpoint based on the provided `RunnableConfig`.
+    ///
+    /// If `checkpointId` is set in the configuration, the corresponding checkpoint is returned.
+    /// Otherwise, returns the latest checkpoint for the context.
+    ///
+    /// - Parameter config: The configuration that may include a specific checkpoint identifier.
+    /// - Returns: The requested `Checkpoint` instance, or `nil` if not found.
     func get(config: RunnableConfig) ->  Checkpoint?;
 
+    /// Persists a new checkpoint or updates an existing one based on the configuration.
+    ///
+    /// If the `checkpointId` is set in the configuration, the checkpoint with that ID is updated.
+    /// Otherwise, the new checkpoint is added to the thread's checkpoint stack.
+    ///
+    /// - Parameters:
+    ///   - config: The configuration identifying the context or thread.
+    ///   - checkpoint: The checkpoint to be saved or updated.
+    /// - Returns: A modified `RunnableConfig` reflecting the new checkpoint ID.
+    /// - Throws: An error if the checkpoint cannot be persisted.
     func put(config: RunnableConfig,  checkpoint: Checkpoint) throws -> RunnableConfig;
 
+    /// Releases all checkpoints associated with the provided `RunnableConfig`.
+    ///
+    /// This method is responsible for cleanup of checkpoints tied to a specific context or thread.
+    ///
+    /// - Parameter config: The configuration identifying the context or thread.
+    /// - Returns: A `Tag` representing the final state of the thread's checkpoints.
+    /// - Throws: An error if the release operation fails.
     func release(config: RunnableConfig) throws -> Tag;
-
 }
 
 extension CheckpointSaver {
     @inline(__always) func THREAD_ID_DEFAULT() -> String { "$default" };
+    
+    @inline(__always) func last( config: RunnableConfig ) ->  Checkpoint? {
+        list( config: config ).first
+    }
 }
 
 struct Stack<T>  {
@@ -104,9 +151,10 @@ struct Stack<T>  {
     }
 }
 
+
 extension Stack: Sequence {
     public func makeIterator() -> IndexingIterator<Array<T>> {
-        return elements.makeIterator()
+        return elements.reversed().makeIterator()
     }
 }
 
@@ -173,22 +221,26 @@ public class MemoryCheckpointSaver: CheckpointSaver {
         
         updateCheckpoint( config: config, checkpoints: checkpoints )
         
-        var result = config
-        
-        result.checkpointId = checkpoint.id
-        
-        return result
+        return config.with {
+            $0.checkpointId = checkpoint.id
+        }
         
     }
     
     public func release(config: RunnableConfig) throws -> Tag {
-        fatalError( "Not implemented" )
+        let threadId = config.threadId ?? THREAD_ID_DEFAULT()
+        
+        guard let removedCheckpoints = self.checkpointsByThread.removeValue(forKey: threadId) else {
+            throw CheckpointError.missingThreadIdentifier("No checkpoint found for thread \(threadId)")
+        }
+        
+        return Tag( threadId: threadId, checkpoints: AnyCollection(removedCheckpoints.elements) )
     }
     
     public func list(config: RunnableConfig) -> AnyCollection<Checkpoint> {
         let checkpoints = checkpoints(config: config);
         
-        return AnyCollection(checkpoints.elements)
+        return AnyCollection(checkpoints.elements.reversed())
     }
 }
 
