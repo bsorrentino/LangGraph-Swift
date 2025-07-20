@@ -682,7 +682,6 @@ public class StateGraph<State: AgentState>  {
     private var nodes: Set<Node> = []
 
     private var entryPoint: EdgeValue?
-    private var finishPoint: String?
 
     private var stateFactory: StateFactory<State>
     private var channels: Channels
@@ -825,15 +824,7 @@ public class StateGraph<State: AgentState>  {
     public func setConditionalEntryPoint( condition: @escaping EdgeCondition<State>, edgeMapping: [String:String] ) throws {
         let _ = try self.addConditionalEdge(sourceId: START, condition: condition, edgeMapping: edgeMapping )
     }
-    
-    /// Sets the finish point of the state graph.
-    ///
-    /// - Parameter nodeId: The identifier of the finish point node.
-    @available(*, deprecated, message: "This method is deprecated. Use `addEdge( nodeId, END )` instead.")
-    public func setFinishPoint( _ nodeId: String ) {
-        finishPoint = nodeId
-    }
-    
+        
     private var fakeAction: NodeAction<State> = { _ in return [:] }
 
     private func makeFakeNode( _ id: String ) -> Node {
@@ -875,13 +866,7 @@ public class StateGraph<State: AgentState>  {
                 }
             break
         }
-        
-        if let finishPoint {
-            guard nodes.contains( makeFakeNode( finishPoint ) ) else {
-                throw StateGraphError.finishPointNotExist( "finishPoint: \(finishPoint) doesn't exist!")
-            }
-        }
-        
+                
         for edge in edges {
             guard nodes.contains( makeFakeNode(edge.sourceId) ) else {
                 throw StateGraphError.missingNodeReferencedByEdge( "edge sourceId: \(edge.sourceId) reference to non existent node!")
@@ -934,9 +919,6 @@ extension StateGraph {
         /// The entry point of the graph.
         var entryPoint: EdgeValue
         
-        /// The finish point of the graph, if any.
-        var finishPoint: String?
-        
         /// The schema representing the channels in the graph.
         let schema: Channels
         
@@ -951,7 +933,6 @@ extension StateGraph {
             self.nodes = Dictionary()
             self.edges = Dictionary()
             self.entryPoint = owner.entryPoint!
-            self.finishPoint = owner.finishPoint
             self.compileConfig = owner.compileConfig
             
             owner.nodes.forEach { [unowned self] node in
@@ -1191,21 +1172,6 @@ extension StateGraph {
                         let output = NodeOutput(node: currentNodeId, state: currentState)
                         
                         try Task.checkCancellation()
-                        
-                        if(currentNodeId == finishPoint) {
-                            // Add Checkpoint
-                            if let saver = compileConfig?.checkpointSaver {
-                                
-                                let _ = try saver.put(config: config,
-                                                      checkpoint: .init( state: currentState.data.clone(),
-                                                            nodeId: END,
-                                                            nextNodeId: START))
-                            }
-
-                            continuation.yield(output)
-
-                            break
-                        }
                         
                         nextNodeId = try await fetchNextNodeId(nodeId: currentNodeId, agentState: currentState)
                         
