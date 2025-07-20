@@ -23,11 +23,10 @@
 - [x] Async support 
 - [x] Streaming support 
 - [x] Subgraph support 
-- [ ] Checkpoints (_save and replay feature_)
-- [ ] Threads (_checkpointing of multiple different runs_)
-- [ ] Update state (_interact with the state directly and update it_)
-- [ ] Breakpoints (_pause and resume feature_)
-- [ ] Graph migration
+- [x] Checkpoints (_save and replay feature_)
+    - [x] Threads (_checkpointing of multiple different runs_)
+    - [x] Update state (_interact with the state directly and update it_)
+    - [x] Breakpoints (_pause and resume feature_)
 - [ ] Graph visualization
   - [ ] [PlantUML]
   - [ ] [Mermaid]
