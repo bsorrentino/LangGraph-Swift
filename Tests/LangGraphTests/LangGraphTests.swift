@@ -1,6 +1,70 @@
 import XCTest
 @testable import LangGraph
+import Testing
 
+
+
+func compareAsEquatable(_ value: Any, _ expectedValue: Any) -> Bool {
+    if let value1 = value as? Int, let value2 = expectedValue as? Int {
+        return value1 == value2
+    }
+    if let value1 = value as? String, let value2 = expectedValue as? String {
+        return value1 == value2
+    }
+    if let values2 = expectedValue as? [Any] {
+        if let values1 = value as? [Any] {
+            if values1.count == values2.count {
+                for ( v1, v2) in zip(values1, values2) {
+                    return compareAsEquatable( v1, v2 )
+                }
+            }
+        }
+    }
+    return false
+}
+
+struct BinaryOpState : AgentState {
+    var data: [String : Any]
+    
+    init() {
+        data = ["add1": 0, "add2": 0 ]
+    }
+    
+    init(_ initState: [String : Any]) {
+        data = initState
+    }
+    var op:String? {
+        data["op"] as? String
+    }
+
+    var add1:Int? {
+        data["add1"] as? Int
+    }
+    var add2:Int? {
+        data["add2"] as? Int
+    }
+}
+
+func assertDictionaryOfAnyEqual( _ expected: [String:Any], _ current: [String:Any] ) {
+    XCTAssertEqual(expected.count, current.count, "the dictionaries have different size")
+    for (key, value) in current {
+        XCTAssertTrue( compareAsEquatable(value, expected[key]!) )
+        
+    }
+    
+}
+
+func dictionaryOfAnyEqual( _ expected: [String:Any], _ current: [String:Any] ) -> Bool {
+    if( expected.count != current.count ) {
+        return false // "the dictionaries have different size"
+    }
+    for (key, value) in current {
+        if( !compareAsEquatable(value, expected[key]!) ) {
+            return false // "values for \(key) do not match"
+        }
+    }
+    return true
+}
 
 // XCTest Documentation
 // https://developer.apple.com/documentation/xctest
@@ -9,33 +73,6 @@ import XCTest
 // https://developer.apple.com/documentation/xctest/defining_test_cases_and_test_methods
 final class LangGraphTests: XCTestCase {
     
-
-    func compareAsEquatable(_ value: Any, _ expectedValue: Any) -> Bool {
-        if let value1 = value as? Int, let value2 = expectedValue as? Int {
-            return value1 == value2
-        }
-        if let value1 = value as? String, let value2 = expectedValue as? String {
-            return value1 == value2
-        }
-        if let values2 = expectedValue as? [Any] {
-            if let values1 = value as? [Any] {
-                if values1.count == values2.count {
-                    for ( v1, v2) in zip(values1, values2) {
-                        return compareAsEquatable( v1, v2 )
-                    }
-                }
-            }
-        }
-        return false
-    }
-    
-    func assertDictionaryOfAnyEqual( _ expected: [String:Any], _ current: [String:Any] ) {
-        XCTAssertEqual(current.count, expected.count, "the dictionaries have different size")
-        for (key, value) in current {
-            
-            XCTAssertTrue( compareAsEquatable(value, expected[key]!) )
-            
-        }
 
     }
     func testValidation() async throws {
@@ -132,34 +169,13 @@ final class LangGraphTests: XCTestCase {
         
         let app = try workflow.compile()
         
-        let result = try await app.invoke(inputs: [ "input": "test1"] )
+        let result = try await app.invoke( .args([ "input": "test1"]) )
         
         let expected = ["prop1": "test", "input": "test1"]
         assertDictionaryOfAnyEqual( expected, result.data )
         
     }
 
-    struct BinaryOpState : AgentState {
-        var data: [String : Any]
-        
-        init() {
-            data = ["add1": 0, "add2": 0 ]
-        }
-        
-        init(_ initState: [String : Any]) {
-            data = initState
-        }
-        var op:String? {
-            data["op"] as? String
-        }
-
-        var add1:Int? {
-            data["add1"] as? Int
-        }
-        var add2:Int? {
-            data["add2"] as? Int
-        }
-    }
 
     func testRunningTreeNodes() async throws {
             
@@ -193,7 +209,7 @@ final class LangGraphTests: XCTestCase {
 
         let app = try workflow.compile()
         
-        let result = try await app.invoke(inputs: [ : ] )
+        let result = try await app.invoke( .args([ : ]) )
         
         assertDictionaryOfAnyEqual( ["add1": 37, "add2": 10, "result":  47 ], result.data )
 
@@ -259,11 +275,11 @@ final class LangGraphTests: XCTestCase {
 
         let app = try workflow.compile()
         
-        let resultMul = try await app.invoke( inputs: [ "op": "mul" ] )
+        let resultMul = try await app.invoke( .args([ "op": "mul" ]) )
         
         assertDictionaryOfAnyEqual(["op": "mul", "add1": 37, "add2": 10, "result": 370 ], resultMul.data)
         
-        let resultAdd = try await app.invoke( inputs: [ "op": "sum" ] )
+        let resultAdd = try await app.invoke( .args([ "op": "sum" ]) )
         
         assertDictionaryOfAnyEqual(["op": "sum", "add1": 37, "add2": 10, "result": 47 ], resultAdd.data)
     }
@@ -311,7 +327,7 @@ final class LangGraphTests: XCTestCase {
 
         let app = try workflow.compile()
         
-        let result = try await app.invoke(inputs: [ : ] )
+        let result = try await app.invoke( .args([ : ]) )
         
         print( result.data )
         assertDictionaryOfAnyEqual( ["messages": [ "message1", "message2", "message3"], "result":  3 ], result.data )
@@ -341,7 +357,7 @@ final class LangGraphTests: XCTestCase {
         let app = try workflow.compile()
                 
         let nodesInvolved =
-            try await app.stream(inputs: [:] ).reduce([] as [String]) { partialResult, output in
+            try await app.stream(.args([ : ]) ).reduce([] as [String]) { partialResult, output in
                                     
                     print( "-------------")
                     print( "Agent Output of \(output.node)" )
@@ -381,7 +397,7 @@ final class LangGraphTests: XCTestCase {
             
         let task = Task {
                     
-            return try await app.stream(inputs: [:] ).reduce([] as [String]) { partialResult, output in
+            return try await app.stream( .args([ : ]) ).reduce([] as [String]) { partialResult, output in
                 
                 print( "-------------")
                 print( "Agent Output of \(output.node)" )
@@ -455,7 +471,7 @@ final class LangGraphTests: XCTestCase {
         let initValue:( lastState:AgentStateWithAppender?, nodesInvolved:[String]) = ( nil, [] )
         
         let result =
-            try await app.stream(inputs: [:] ).reduce( initValue, { partialResult, output in
+            try await app.stream( .args([ : ]) ).reduce( initValue, { partialResult, output in
                                     
                     print( "-------------")
                     print( "Agent Output of \(output.node)" )
@@ -485,7 +501,191 @@ final class LangGraphTests: XCTestCase {
                             "child::message3",
                          "parent::message3"],
                         result.lastState!.messages)
-    }
+}
+
+@Test("Codable State Data")
+func testCodableStateData() async throws {
+    
+    let state: [String: Any] = [
+        "name": "Alice",
+        "age": 30,
+        "metadata": ["active": true, "tags": ["swift", "ios"]] as [String: Any],
+        "invalid": URLSession.shared // non-Encodable
+    ]
+    
+    let data = try encodeStateData(encoder: JSONEncoder(), state: state )
+    
+    let decodedState = try decodeStateData(decoder: JSONDecoder(), from: data)
+    
+    #expect(decodedState.count == state.count - 1)
+    #expect(decodedState["name"] as? String == "Alice")
+    #expect(decodedState["age"] as? Int == 30)
+    #expect(decodedState["invalid"]  == nil)
+    let metadata = (decodedState["metadata"] as? [String: Any])
+    #expect( metadata != nil)
+    #expect( metadata!.count  == 2)
+    #expect( metadata!["active"] as? Bool  == true)
+    #expect( (metadata!["tags"] as? [String]) == ["swift", "ios"])
 
 
 }
+
+@Test
+func testRunningWithCheckpoint() async throws {
+    let saver = MemoryCheckpointSaver()
+    
+    let workflow = StateGraph { BinaryOpState($0) }
+    
+    try workflow.addNode("agent_1") { state in
+        print( "agent_1", state )
+        return ["add1": 37]
+    }
+    try workflow.addNode("agent_2") { state in
+        print( "agent_2", state )
+        return ["add2": 10]
+    }
+    try workflow.addNode("sum") { state in
+        print( "sum", state )
+        guard let add1 = state.add1, let add2 = state.add2 else {
+            throw CompiledGraphError.executionError("agent state is not valid! expect 'add1', 'add2'")
+        }
+        
+        return ["result": add1 + add2 ]
+    }
+
+    try workflow.addEdge(sourceId: "agent_1", targetId: "agent_2")
+    try workflow.addEdge(sourceId: "agent_2", targetId: "sum")
+
+    try workflow.addEdge( sourceId: START, targetId: "agent_1")
+    try workflow.addEdge(sourceId: "sum", targetId: END )
+    
+    let app = try workflow.compile( config: CompileConfig(checkpointSaver: saver) )
+    
+    let runnableConfig = RunnableConfig()
+    
+    let initValue:( lastState:BinaryOpState?, nodes:[String]) = ( nil, [] )
+    
+    let result = try await app.stream( .args([:]), config: runnableConfig ).reduce( initValue, { partialResult, output in
+        
+        print( output )
+        
+        return ( output.state,  partialResult.1 + [output.node ] )
+    })
+    
+    #expect( dictionaryOfAnyEqual(  ["add1": 37, "add2": 10, "result":  47 ],
+                                    result.lastState!.data) )
+
+
+    #expect( saver.list(config: runnableConfig).count == 4 )
+    
+    saver.list(config: runnableConfig).forEach { print( $0 ) }
+    
+    let lastCheckpoint = saver.last(config: runnableConfig)
+    
+    #expect( lastCheckpoint?.nodeId == "sum" )
+    #expect( lastCheckpoint?.nextNodeId == END )
+
+}
+
+@Test
+func testRunningWithInterruption() async throws {
+    // Create a memory-based checkpoint saver
+    let saver = MemoryCheckpointSaver()
+    
+    // Build the workflow with an initial state
+    let workflow = try StateGraph { BinaryOpState($0) }
+    
+    // Add node "agent_1" that returns "add1": 37
+    .addNode("agent_1") { state in
+        print( "agent_1", state )
+        return ["add1": 37]
+    }
+    // Add node "agent_2" that returns "add2": 10
+    .addNode("agent_2") { state in
+        print( "agent_2", state )
+        return ["add2": 10]
+    }
+    // Add node "sum" that sums add1 and add2
+    .addNode("sum") { state in
+        print( "sum", state )
+        guard let add1 = state.add1, let add2 = state.add2 else {
+            throw CompiledGraphError.executionError("agent state is not valid! expect 'add1', 'add2'")
+        }
+        return ["result": add1 + add2 ]
+    }
+    // Define the edges between nodes
+    .addEdge(sourceId: "agent_1", targetId: "agent_2")
+    .addEdge(sourceId: "agent_2", targetId: "sum")
+    .addEdge( sourceId: START, targetId: "agent_1")
+    .addEdge(sourceId: "sum", targetId: END )
+    
+    // Compile the workflow, instructing it to interrupt before executing "sum"
+    let app = try workflow.compile( config: CompileConfig(checkpointSaver: saver, interruptionsBefore: ["sum"]) )
+    
+    let runnableConfig = RunnableConfig()
+    
+    let initValue:( lastState:BinaryOpState?, nodes:[String]) = ( nil, [] )
+    
+    // Start workflow execution — it will stop before running "sum"
+    let result = try await app.stream( .args([:]), config: runnableConfig ).reduce( initValue, { partialResult, output in
+        print( output )
+        return ( output.state,  partialResult.1 + [output.node ] )
+    })
+    
+    // Verify that "add1" and "add2" are present but not "result"
+    #expect( dictionaryOfAnyEqual( ["add1": 37, "add2": 10], result.lastState!.data ) )
+
+    // Check number of checkpoints saved
+    #expect( saver.list(config: runnableConfig).count == 3 )
+    
+    saver.list(config: runnableConfig).forEach { print( $0 ) }
+    
+    // Retrieve last checkpoint and verify its position
+    let lastCheckpoint = try #require( saver.last(config: runnableConfig) )
+    #expect( lastCheckpoint.nodeId == "agent_2" )
+    #expect( lastCheckpoint.nextNodeId == "sum" )
+
+    // Resume from last checkpoint and complete execution
+    let runnableConfig2 = runnableConfig.with { $0.checkpointId = lastCheckpoint.id }
+    let initValue2:( lastState:BinaryOpState?, nodes:[String]) = ( nil, [] )
+    let result2 = try await app.stream( .resume, config: runnableConfig2 ).reduce( initValue2, { partialResult, output in
+        print( output )
+        return ( output.state,  partialResult.1 + [output.node ] )
+    })
+
+    // Verify that "result" has now been computed
+    #expect( dictionaryOfAnyEqual(  ["add1": 37, "add2": 10, "result":  47 ],
+                                    result2.lastState!.data) )
+    
+    // Release the checkpoint to clean up
+    try saver.release(config: runnableConfig2)
+
+    // Start a new run in a different thread
+    let runnableConfig3 = RunnableConfig( threadId: "T1" )
+    let initValue3:( lastState:BinaryOpState?, nodes:[String]) = ( nil, [] )
+    let result3 = try await app.stream( .args([:]), config: runnableConfig3 ).reduce( initValue3, { partialResult, output in
+        print( output )
+        return ( output.state,  partialResult.1 + [output.node ] )
+    })
+
+    // This run is also interrupted before "sum"
+    #expect( dictionaryOfAnyEqual(  ["add1": 37, "add2": 10,  ],
+                                    result3.lastState!.data) )
+    
+    // Resume the third run with updated state: change add2 from 10 to 13
+    let lastCheckpoint4 = try #require( saver.last(config: runnableConfig3) )
+    var runnableConfig4 = runnableConfig3.with { $0.checkpointId = lastCheckpoint4.id }
+    runnableConfig4 = try await app.updateState(config: runnableConfig4, values: ["add2": 13] )
+    
+    // Resume and complete execution with updated value
+    let initValue4:( lastState:BinaryOpState?, nodes:[String]) = ( nil, [] )
+    let result4 = try await app.stream( .resume, config: runnableConfig4 ).reduce( initValue4, { partialResult, output in
+        print( output )
+        return ( output.state,  partialResult.1 + [output.node ] )
+    })
+    
+    // Verify that "result" now reflects the updated input
+    #expect( dictionaryOfAnyEqual(  ["add1": 37, "add2": 13, "result": 50 ],
+                                    result4.lastState!.data) )
+}
+

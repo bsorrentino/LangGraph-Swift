@@ -48,6 +48,88 @@ public typealias DefaultProvider<Value> = () throws -> Value
  */
 public typealias StateFactory<State: AgentState> = ([String: Any]) -> State
 
+/// Update Struct
+//func updated <T> (_ value: T, with update: (inout T) -> Void) -> T {
+//    var editable = value
+//    update(&editable)
+//    return editable
+//}
+
+// A type-erasing wrapper for any Encodable value
+struct AnyEncodable: Encodable {
+    let value: Encodable
+
+    func encode(to encoder: Encoder) throws {
+        // Here, we directly encode the underlying value
+        // The encoder will figure out the concrete type at runtime
+        try value.encode(to: encoder)
+    }
+}
+
+struct AnyDecodable: Decodable {
+    let value: Any
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.singleValueContainer()
+        
+        if container.decodeNil() {
+            value = NSNull()
+        } else if let bool = try? container.decode(Bool.self) {
+            value = bool
+        } else if let int = try? container.decode(Int.self) {
+            value = int
+        } else if let double = try? container.decode(Double.self) {
+            value = double
+        } else if let string = try? container.decode(String.self) {
+            value = string
+        } else if let array = try? container.decode([AnyDecodable].self) {
+            value = array.map { $0.value }
+        } else if let dict = try? container.decode([String: AnyDecodable].self) {
+            value = dict.mapValues { $0.value }
+        } else {
+            throw DecodingError.dataCorruptedError(in: container, debugDescription: "Unsupported type found.")
+        }
+    }
+}
+
+func toEncodableStateData( data: [String: Any], skippingNonEncodable: Bool = true) throws -> [String: AnyEncodable] {
+    return try data.compactMapValues { value -> AnyEncodable? in
+        
+        switch value {
+        case let dict as [String: Any]:
+            // Recursively handle dictionaries
+            return AnyEncodable(value: dict.compactMapValues { $0 as? Encodable }.mapValues { AnyEncodable(value: $0) })
+        case let array as [Any]:
+            // Recursively handle arrays
+            return AnyEncodable(value: array.compactMap { $0 as? Encodable }.map { AnyEncodable(value: $0) })
+        default:
+            // Check if the value is Encodable
+            guard let encodableValue = value as? Encodable else {
+                if( !skippingNonEncodable ) {
+                    throw EncodingError.invalidValue(value,
+                                                     EncodingError.Context(codingPath: [],
+                                                                           debugDescription: "Value \(value) cannot be encoded."))
+                }
+                return nil
+            }
+            return AnyEncodable(value: encodableValue)
+        }
+    }
+}
+    
+func encodeStateData(encoder: JSONEncoder, state: [String: Any], skippingNonEncodable: Bool = true) throws -> Data {
+    
+    let encodableState =  try toEncodableStateData(data: state, skippingNonEncodable: skippingNonEncodable)
+    
+    return try encoder.encode(encodableState)
+
+}
+
+func decodeStateData( decoder: JSONDecoder, from data: Data ) throws -> [String: Any] {
+    let decodedDictionary = try decoder.decode([String: AnyDecodable].self, from: data)
+    return decodedDictionary.mapValues { $0.value }
+}
+
 /**
  A protocol defining the requirements for a channel.
  */
@@ -152,7 +234,7 @@ public class Channel<T> : ChannelProtocol {
 /**
  A specialized `Channel` that appends new values to an array of existing values.
  
- `AppenderChannel` is a subclass of `Channel` designed to handle arrays of values. 
+ `AppenderChannel` is a subclass of `Channel` designed to handle arrays of values.
  It provides functionality to append new values to the existing array, using a reducer function.
  
  - Note: The default value provider initializes the channel with an empty array if not specified.
@@ -165,7 +247,7 @@ public class AppenderChannel<T> : Channel<[T]> {
     /**
      Initializes a new instance of `AppenderChannel`.
      
-     - Parameter defaultValueProvider: A closure that provides the default value for the channel. 
+     - Parameter defaultValueProvider: A closure that provides the default value for the channel.
        If not provided, the default value is an empty array.
      */
     public init(default defaultValueProvider: @escaping DefaultProvider<[T]> = { [] }) {
@@ -237,6 +319,54 @@ extension AgentState {
     
 }
 
+func updateState( currentState: [String: Any], partialState: [String: Any], channels: Channels ) throws -> [String: Any] {
+    let mappedValues = try partialState.map { key, value in
+        if let channel = channels[key] {
+            do {
+                let newValue = try channel.updateAttribute( key, oldValue: currentState[key], newValue: value)
+                return (key, newValue)
+            } catch CompiledGraphError.executionError(let message) {
+                throw CompiledGraphError.executionError("error processing property: '\(key)' - \(message)")
+            }
+        }
+        return (key, value)
+    }
+    
+    return currentState.merging( Dictionary( uniqueKeysWithValues: mappedValues), uniquingKeysWith: {
+        (current, new ) in  new
+    })
+}
+
+
+extension AgentState {
+    
+    @inline(__always)
+    func updateStateData( partialState: [String: Any], channels: Channels ) throws -> [String: Any] {
+        return try LangGraph.updateState( currentState: data, partialState: partialState, channels: channels )
+    }
+
+}
+
+extension Dictionary where Key == String, Value == Any {
+    
+    func clone() throws -> Self {
+        let data = try encodeStateData(encoder: JSONEncoder(), state: self )
+        
+        return try decodeStateData(decoder: JSONDecoder(), from: data)
+    }
+    
+
+}
+
+extension AgentState {
+    
+    @inline(__always)
+    func clone() throws -> Self {
+        return .init( try data.clone() )
+    }
+
+}
+
 /// A structure representing the output of a node in a state graph.
 ///
 /// `NodeOutput` encapsulates the node identifier and its associated state.
@@ -262,6 +392,10 @@ public struct NodeOutput<State: AgentState> {
     }
 }
 
+public enum GraphInput {
+    case args([String: Any])
+    case resume
+}
 
 /// A structure representing the base state of an agent.
 ///
@@ -293,7 +427,44 @@ public struct BaseAgentState: AgentState {
     public init(_ initState: [String: Any]) {
         data = initState
     }
+    
 }
+
+public struct CompileConfig {
+    var checkpointSaver: CheckpointSaver?
+    let interruptionsBefore: [String]
+    
+    public init(checkpointSaver: CheckpointSaver? = nil, interruptionsBefore: [String] = []  ) {
+        self.checkpointSaver = checkpointSaver
+        self.interruptionsBefore = interruptionsBefore
+    }
+}
+
+public struct RunnableConfig {
+    var threadId: String?;
+    var checkpointId: UUID?
+    var nextNodeId: String?
+    var verbose: Bool
+    
+    public init(threadId: String? = nil, checkpointId: UUID? = nil, verbose: Bool = false) {
+        self.threadId = threadId
+        self.verbose = verbose
+        self.checkpointId = checkpointId
+    }
+    
+    
+}
+
+extension RunnableConfig {
+
+    public func with( update: (inout Self) -> Void) -> Self {
+        var editable = self
+        update(&editable)
+        return editable
+    }
+
+}
+
 /**
  An enumeration representing various errors that can occur in a `StateGraph`.
 
@@ -516,6 +687,8 @@ public class StateGraph<State: AgentState>  {
     private var stateFactory: StateFactory<State>
     private var channels: Channels
     
+    private var compileConfig: CompileConfig?
+    
     /// Initializes a new instance of `StateGraph`.
     ///
     /// - Parameters:
@@ -532,7 +705,8 @@ public class StateGraph<State: AgentState>  {
     ///    - id: The identifier of the node.
     ///    - action: A closure representing the action to be performed on the node.
     /// - Throws: An error if the node identifier is invalid or if a node with the same identifier already exists.
-    public func addNode( _ id: String, action: @escaping NodeAction<State> ) throws  {
+    @discardableResult
+    public func addNode( _ id: String, action: @escaping NodeAction<State> ) throws -> Self {
         guard id != END else {
             throw StateGraphError.invalidNodeIdentifier( "END is not a valid node id!")
         }
@@ -541,6 +715,7 @@ public class StateGraph<State: AgentState>  {
             throw StateGraphError.duplicateNodeError("node with id:\(id) already exist!")
         }
         nodes.insert( node )
+        return self
     }
     
     /**
@@ -558,11 +733,12 @@ public class StateGraph<State: AgentState>  {
      
      - Note: The subgraph's outputs are represented as an embedded stream within the current graph's execution.
      */
-    public func addNode(_ id: String, subgraph: StateGraph<State>.CompiledGraph) throws {
+    @discardableResult
+    public func addNode(_ id: String, subgraph: StateGraph<State>.CompiledGraph) throws -> Self {
         // Create a new node with the specified ID. Its action invokes the subgraph
         // and streams its output as part of the state graph's execution.
         let node = Node(id: id, action: { state in
-            return ["_subgraph": subgraph.stream(inputs: state.data)]
+            return ["_subgraph": subgraph.stream( .args(state.data) ) ]
         })
         
         // Check if a node with the same ID already exists, throwing an error if so.
@@ -572,6 +748,7 @@ public class StateGraph<State: AgentState>  {
         
         // Add the newly created node to the set of nodes in the state graph.
         nodes.insert(node)
+        return self
     }
 
     /// Adds an edge to the state graph.
@@ -580,7 +757,8 @@ public class StateGraph<State: AgentState>  {
     ///    - sourceId: The identifier of the source node.
     ///    - targetId: The identifier of the target node.
     /// - Throws: An error if the edge identifiers are invalid or if an edge with the same source identifier already exists.
-    public func addEdge( sourceId: String, targetId: String ) throws {
+    @discardableResult
+    public func addEdge( sourceId: String, targetId: String ) throws -> Self {
         guard sourceId != END else {
             throw StateGraphError.invalidEdgeIdentifier( "END is not a valid edge sourceId!")
         }
@@ -589,7 +767,7 @@ public class StateGraph<State: AgentState>  {
                 throw StateGraphError.invalidNodeIdentifier( "END is not a valid node entry point!")
             }
             entryPoint = EdgeValue.id(targetId)
-            return
+            return self
         }
 
         let edge = Edge(sourceId: sourceId, target: .id(targetId) )
@@ -597,6 +775,7 @@ public class StateGraph<State: AgentState>  {
             throw StateGraphError.duplicateEdgeError("edge with id:\(sourceId) already exist!")
         }
         edges.insert( edge )
+        return self
     }
     
     /// Adds a conditional edge to the state graph.
@@ -606,7 +785,8 @@ public class StateGraph<State: AgentState>  {
     ///    - condition: A closure representing the condition to be checked on the edge.
     ///    - edgeMapping: A dictionary representing the edge mappings.
     /// - Throws: An error if the edge identifiers are invalid or if the edge mapping is empty.
-    public func addConditionalEdge( sourceId: String, condition: @escaping EdgeCondition<State>, edgeMapping: [String:String] ) throws {
+    @discardableResult
+    public func addConditionalEdge( sourceId: String, condition: @escaping EdgeCondition<State>, edgeMapping: [String:String] ) throws -> Self {
         guard sourceId != END else {
             throw StateGraphError.invalidEdgeIdentifier( "END is not a valid edge sourceId!")
         }
@@ -615,7 +795,7 @@ public class StateGraph<State: AgentState>  {
         }
         guard sourceId != START else {
             entryPoint = EdgeValue.condition((condition, edgeMapping))
-            return
+            return self
         }
 
         let edge = Edge(sourceId: sourceId, target: .condition(( condition, edgeMapping)) )
@@ -623,7 +803,7 @@ public class StateGraph<State: AgentState>  {
             throw StateGraphError.duplicateEdgeError("edge with id:\(sourceId) already exist!")
         }
         edges.insert( edge)
-        return
+        return self
     }
     
     /// Sets the entry point of the state graph.
@@ -664,7 +844,19 @@ public class StateGraph<State: AgentState>  {
     ///
     /// - Throws: An error if the entry point or finish point is invalid, or if there are missing nodes referenced by edges.
     /// - Returns: A `CompiledGraph` instance representing the compiled state graph.
-    public func compile() throws -> CompiledGraph {
+    public func compile( config: CompileConfig? = nil ) throws -> CompiledGraph {
+        
+        if let config {
+            self.compileConfig = config
+            
+            for interruption in config.interruptionsBefore {
+                
+                guard nodes.first( where: { $0.id == interruption } ) != nil else  {
+                    throw StateGraphError.missingNodeInEdgeMapping( "interruptionBefore contains a not existent nodeId \(interruption)!")
+                }
+            }
+        }
+        
         guard let entryPoint else {
             throw StateGraphError.missingEntryPoint
         }
@@ -728,6 +920,8 @@ extension StateGraph {
      */
     public class CompiledGraph {
     
+        var compileConfig: CompileConfig?
+        
         /// A factory for creating agent states.
         var stateFactory: StateFactory<State>
         
@@ -758,6 +952,7 @@ extension StateGraph {
             self.edges = Dictionary()
             self.entryPoint = owner.entryPoint!
             self.finishPoint = owner.finishPoint
+            self.compileConfig = owner.compileConfig
             
             owner.nodes.forEach { [unowned self] node in
                 nodes[node.id] = node.action
@@ -794,19 +989,7 @@ extension StateGraph {
          - Returns: The updated partial state.
          */
         private func updatePartialStateFromSchema(currentState: State, partialState: PartialAgentState) throws -> PartialAgentState {
-            let mappedValues = try partialState.map { key, value in
-                if let channel = schema[key] {
-                    do {
-                        let newValue = try channel.updateAttribute( key, oldValue: currentState.data[key], newValue: value)
-                        return (key, newValue)
-                    } catch CompiledGraphError.executionError(let message) {
-                        throw CompiledGraphError.executionError("error processing property: '\(key)' - \(message)")
-                    }
-                }
-                return (key, value)
-            }
-            
-            return Dictionary(uniqueKeysWithValues: mappedValues)
+            return try currentState.updateStateData(partialState: partialState, channels: schema)
         }
         
         /**
@@ -841,7 +1024,7 @@ extension StateGraph {
          - Throws: An error if the next node ID cannot be determined.
          - Returns: The next node ID.
          */
-        private func nextNodeId(route: EdgeValue?, agentState: State, nodeId: String) async throws -> String {
+        private func fetchNextNodeId(route: EdgeValue?, agentState: State, nodeId: String) async throws -> String {
             guard let route else {
                 throw CompiledGraphError.missingEdge("edge with node: \(nodeId) not found!")
             }
@@ -867,8 +1050,8 @@ extension StateGraph {
          - Throws: An error if the next node ID cannot be determined.
          - Returns: The next node ID.
          */
-        private func nextNodeId(nodeId: String, agentState: State) async throws -> String {
-            try await nextNodeId(route: edges[nodeId], agentState: agentState, nodeId: nodeId)
+        private func fetchNextNodeId(nodeId: String, agentState: State) async throws -> String {
+            try await fetchNextNodeId(route: edges[nodeId], agentState: agentState, nodeId: nodeId)
         }
 
         /**
@@ -879,7 +1062,7 @@ extension StateGraph {
          - Returns: The entry point node ID.
          */
         private func getEntryPoint(agentState: State) async throws -> String {
-            try await nextNodeId(route: self.entryPoint, agentState: agentState, nodeId: "entryPoint")
+            try await fetchNextNodeId(route: self.entryPoint, agentState: agentState, nodeId: "entryPoint")
         }
 
         /**
@@ -913,22 +1096,71 @@ extension StateGraph {
             - verbose: A boolean indicating whether to enable verbose logging.
          - Returns: An `AsyncThrowingStream` of `NodeOutput<State>`.
          */
-        public func stream(inputs: PartialAgentState, verbose: Bool = false) -> AsyncThrowingStream<NodeOutput<State>, Error> {
+        public func stream( _ input: GraphInput, config: RunnableConfig = .init() ) -> AsyncThrowingStream<NodeOutput<State>, Error> {
             let (stream, continuation) = AsyncThrowingStream.makeStream(of: NodeOutput<State>.self, throwing: Error.self)
             
             Task {
                 do {
-                    let initData = try initStateDataFromSchema()
-                    var currentState = try mergeState(currentState: self.stateFactory(initData), partialState: inputs)
-                    var currentNodeId = try await self.getEntryPoint(agentState: currentState)
+                    
+                    var currentState: State
+                    var currentNodeId: String
+                    var nextNodeId: String
+                    var isFirstStepAfterResume: Bool
+                    
+                    switch input {
+                    case .args(let inputArgs):
+                        
+                        let initData = try initStateDataFromSchema()
+                        
+                        currentState = try mergeState(currentState: self.stateFactory(initData), partialState: inputArgs)
+                        
+                        currentNodeId = try await self.getEntryPoint(agentState: currentState)
+                        nextNodeId = currentNodeId
+                        
+                        // Add Checkpoint
+                        if let saver = compileConfig?.checkpointSaver {
+                            
+                            let _ = try saver.put(config: config,
+                                                  checkpoint: .init(state: currentState.data.clone(),
+                                                        nodeId: START,
+                                                        nextNodeId: currentNodeId))
+                        }
 
+                        isFirstStepAfterResume = false
+                    case .resume:
+                        
+                        guard let saver = compileConfig?.checkpointSaver else {
+                            throw CompiledGraphError.executionError("Resume request without a checkpoint saver!")
+                        }
+                        guard let startCheckpoint = saver.get( config: config ) else {
+                            throw CompiledGraphError.executionError("Resume request without a checkpoint!")
+                        }
+                        
+                        currentState = stateFactory(startCheckpoint.state);
+                        
+                        currentNodeId = startCheckpoint.nodeId
+                        nextNodeId = startCheckpoint.nextNodeId
+                        
+                        isFirstStepAfterResume = true
+                    }
+                    
                     repeat {
+                        
+                        if let interruptionsBefore = compileConfig?.interruptionsBefore  {
+                            if( !isFirstStepAfterResume && interruptionsBefore.contains(nextNodeId) ) {
+                                break;
+                            }
+                            isFirstStepAfterResume = false
+                        }
+                        
+                        currentNodeId = nextNodeId;
+
                         guard let action = nodes[currentNodeId] else {
                             continuation.finish(throwing: CompiledGraphError.missingNode("node: \(currentNodeId) not found!"))
                             break
                         }
                         
-                        if(verbose) {
+                        if( config.verbose) {
                             log.debug("start processing node \(currentNodeId)")
                         }
                         
@@ -955,18 +1187,41 @@ extension StateGraph {
                                                           partialState: partialState)
                         }
                         
+
                         let output = NodeOutput(node: currentNodeId, state: currentState)
                         
                         try Task.checkCancellation()
-                        continuation.yield(output)
-
+                        
                         if(currentNodeId == finishPoint) {
+                            // Add Checkpoint
+                            if let saver = compileConfig?.checkpointSaver {
+                                
+                                let _ = try saver.put(config: config,
+                                                      checkpoint: .init( state: currentState.data.clone(),
+                                                            nodeId: END,
+                                                            nextNodeId: START))
+                            }
+
+                            continuation.yield(output)
+
                             break
                         }
                         
-                        currentNodeId = try await nextNodeId(nodeId: currentNodeId, agentState: currentState)
+                        nextNodeId = try await fetchNextNodeId(nodeId: currentNodeId, agentState: currentState)
                         
-                    } while(currentNodeId != END && !Task.isCancelled)
+                        // Add Checkpoint
+                        if let saver = compileConfig?.checkpointSaver {
+                            
+                            let _ = try saver.put(config: config,
+                                                  checkpoint: .init(state: currentState.data.clone(),
+                                                        nodeId: currentNodeId,
+                                                        nextNodeId: nextNodeId))
+                        }
+                        
+                        continuation.yield(output)
+                        
+
+                    } while(nextNodeId != END && !Task.isCancelled)
                     
                     continuation.finish()
                 } catch {
@@ -986,9 +1241,9 @@ extension StateGraph {
          - Throws: An error if the invocation fails.
          - Returns: The final state.
          */
-        public func invoke(inputs: PartialAgentState, verbose: Bool = false) async throws -> State {
+        public func invoke( _ input: GraphInput, config: RunnableConfig = .init() ) async throws -> State {
             let initResult: [NodeOutput<State>] = []
-            let result = try await stream(inputs: inputs).reduce(initResult, { partialResult, output in
+            let result = try await stream( input, config: config ).reduce(initResult, { partialResult, output in
                 [output]
             })
             if result.isEmpty {
@@ -996,6 +1251,50 @@ extension StateGraph {
             }
             return result[0].state
         }
+        
+        /**
+         Updates the state in the checkpoint with new partial values and optionally redirects to a different node.
+
+         This method fetches the current checkpoint using the provided configuration, applies the new partial state
+         values to the checkpoint, and optionally uses the `asNode` parameter to compute the next node ID.
+         It then stores the updated checkpoint and returns a modified `RunnableConfig` pointing to the updated checkpoint.
+
+         - Parameters:
+            - config: The current runnable configuration used to locate the checkpoint.
+            - values: A dictionary representing the partial state values to be applied.
+            - asNode: An optional node ID indicating which node's transition should be used to determine the next node.
+
+         - Throws: `CompiledGraphError.executionError` if the checkpoint saver or the checkpoint is missing,
+                   or if the next node cannot be resolved.
+
+         - Returns: A new `RunnableConfig` updated with the new checkpoint ID and next node ID.
+         */
+        public func updateState( config: RunnableConfig, values: PartialAgentState, asNode: String? = nil ) async throws -> RunnableConfig {
+            guard let saver = compileConfig?.checkpointSaver else {
+                throw CompiledGraphError.executionError("Missing checkpoint saver!")
+            }
+            guard let checkpoint = saver.get( config: config ) else {
+                throw CompiledGraphError.executionError("Missing checkpoint!")
+            }
+
+            let branchCheckpoint = try checkpoint.updateState(values: values, channels: schema)
+
+            var nextNodeId = branchCheckpoint.nextNodeId
+            if let asNode {
+                nextNodeId = try await fetchNextNodeId( nodeId: asNode, agentState: stateFactory(branchCheckpoint.state) );
+            }
+            
+            // update checkpoint in saver
+            let newConfig = try saver.put( config: config, checkpoint: branchCheckpoint );
+
+            return newConfig.with {
+                $0.nextNodeId = nextNodeId
+            }
+        }
+
+        
+        
     }
+
 
 }
