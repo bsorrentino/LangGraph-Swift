@@ -234,7 +234,7 @@ public class Channel<T> : ChannelProtocol {
 /**
  A specialized `Channel` that appends new values to an array of existing values.
  
- `AppenderChannel` is a subclass of `Channel` designed to handle arrays of values. 
+ `AppenderChannel` is a subclass of `Channel` designed to handle arrays of values.
  It provides functionality to append new values to the existing array, using a reducer function.
  
  - Note: The default value provider initializes the channel with an empty array if not specified.
@@ -247,7 +247,7 @@ public class AppenderChannel<T> : Channel<[T]> {
     /**
      Initializes a new instance of `AppenderChannel`.
      
-     - Parameter defaultValueProvider: A closure that provides the default value for the channel. 
+     - Parameter defaultValueProvider: A closure that provides the default value for the channel.
        If not provided, the default value is an empty array.
      */
     public init(default defaultValueProvider: @escaping DefaultProvider<[T]> = { [] }) {
@@ -332,7 +332,9 @@ func updateState( currentState: [String: Any], partialState: [String: Any], chan
         return (key, value)
     }
     
-    return Dictionary(uniqueKeysWithValues: mappedValues)
+    return currentState.merging( Dictionary( uniqueKeysWithValues: mappedValues), uniquingKeysWith: {
+        (current, new ) in  new
+    })
 }
 
 
@@ -441,12 +443,13 @@ public struct CompileConfig {
 public struct RunnableConfig {
     var threadId: String?;
     var checkpointId: UUID?
-    var nextNode: String?
+    var nextNodeId: String?
     var verbose: Bool
     
-    public init(threadId: String? = nil, verbose: Bool = false) {
+    public init(threadId: String? = nil, checkpointId: UUID? = nil, verbose: Bool = false) {
         self.threadId = threadId
         self.verbose = verbose
+        self.checkpointId = checkpointId
     }
     
     
@@ -702,7 +705,8 @@ public class StateGraph<State: AgentState>  {
     ///    - id: The identifier of the node.
     ///    - action: A closure representing the action to be performed on the node.
     /// - Throws: An error if the node identifier is invalid or if a node with the same identifier already exists.
-    public func addNode( _ id: String, action: @escaping NodeAction<State> ) throws  {
+    @discardableResult
+    public func addNode( _ id: String, action: @escaping NodeAction<State> ) throws -> Self {
         guard id != END else {
             throw StateGraphError.invalidNodeIdentifier( "END is not a valid node id!")
         }
@@ -711,6 +715,7 @@ public class StateGraph<State: AgentState>  {
             throw StateGraphError.duplicateNodeError("node with id:\(id) already exist!")
         }
         nodes.insert( node )
+        return self
     }
     
     /**
@@ -728,7 +733,8 @@ public class StateGraph<State: AgentState>  {
      
      - Note: The subgraph's outputs are represented as an embedded stream within the current graph's execution.
      */
-    public func addNode(_ id: String, subgraph: StateGraph<State>.CompiledGraph) throws {
+    @discardableResult
+    public func addNode(_ id: String, subgraph: StateGraph<State>.CompiledGraph) throws -> Self {
         // Create a new node with the specified ID. Its action invokes the subgraph
         // and streams its output as part of the state graph's execution.
         let node = Node(id: id, action: { state in
@@ -742,6 +748,7 @@ public class StateGraph<State: AgentState>  {
         
         // Add the newly created node to the set of nodes in the state graph.
         nodes.insert(node)
+        return self
     }
 
     /// Adds an edge to the state graph.
@@ -750,7 +757,8 @@ public class StateGraph<State: AgentState>  {
     ///    - sourceId: The identifier of the source node.
     ///    - targetId: The identifier of the target node.
     /// - Throws: An error if the edge identifiers are invalid or if an edge with the same source identifier already exists.
-    public func addEdge( sourceId: String, targetId: String ) throws {
+    @discardableResult
+    public func addEdge( sourceId: String, targetId: String ) throws -> Self {
         guard sourceId != END else {
             throw StateGraphError.invalidEdgeIdentifier( "END is not a valid edge sourceId!")
         }
@@ -759,7 +767,7 @@ public class StateGraph<State: AgentState>  {
                 throw StateGraphError.invalidNodeIdentifier( "END is not a valid node entry point!")
             }
             entryPoint = EdgeValue.id(targetId)
-            return
+            return self
         }
 
         let edge = Edge(sourceId: sourceId, target: .id(targetId) )
@@ -767,6 +775,7 @@ public class StateGraph<State: AgentState>  {
             throw StateGraphError.duplicateEdgeError("edge with id:\(sourceId) already exist!")
         }
         edges.insert( edge )
+        return self
     }
     
     /// Adds a conditional edge to the state graph.
@@ -776,7 +785,8 @@ public class StateGraph<State: AgentState>  {
     ///    - condition: A closure representing the condition to be checked on the edge.
     ///    - edgeMapping: A dictionary representing the edge mappings.
     /// - Throws: An error if the edge identifiers are invalid or if the edge mapping is empty.
-    public func addConditionalEdge( sourceId: String, condition: @escaping EdgeCondition<State>, edgeMapping: [String:String] ) throws {
+    @discardableResult
+    public func addConditionalEdge( sourceId: String, condition: @escaping EdgeCondition<State>, edgeMapping: [String:String] ) throws -> Self {
         guard sourceId != END else {
             throw StateGraphError.invalidEdgeIdentifier( "END is not a valid edge sourceId!")
         }
@@ -785,7 +795,7 @@ public class StateGraph<State: AgentState>  {
         }
         guard sourceId != START else {
             entryPoint = EdgeValue.condition((condition, edgeMapping))
-            return
+            return self
         }
 
         let edge = Edge(sourceId: sourceId, target: .condition(( condition, edgeMapping)) )
@@ -793,7 +803,7 @@ public class StateGraph<State: AgentState>  {
             throw StateGraphError.duplicateEdgeError("edge with id:\(sourceId) already exist!")
         }
         edges.insert( edge)
-        return
+        return self
     }
     
     /// Sets the entry point of the state graph.
@@ -1187,7 +1197,7 @@ extension StateGraph {
                             if let saver = compileConfig?.checkpointSaver {
                                 
                                 let _ = try saver.put(config: config,
-                                                      checkpoint: .init(state: currentState.data.clone(),
+                                                      checkpoint: .init( state: currentState.data.clone(),
                                                             nodeId: END,
                                                             nextNodeId: START))
                             }
@@ -1241,6 +1251,50 @@ extension StateGraph {
             }
             return result[0].state
         }
+        
+        /**
+         Updates the state in the checkpoint with new partial values and optionally redirects to a different node.
+
+         This method fetches the current checkpoint using the provided configuration, applies the new partial state
+         values to the checkpoint, and optionally uses the `asNode` parameter to compute the next node ID.
+         It then stores the updated checkpoint and returns a modified `RunnableConfig` pointing to the updated checkpoint.
+
+         - Parameters:
+            - config: The current runnable configuration used to locate the checkpoint.
+            - values: A dictionary representing the partial state values to be applied.
+            - asNode: An optional node ID indicating which node's transition should be used to determine the next node.
+
+         - Throws: `CompiledGraphError.executionError` if the checkpoint saver or the checkpoint is missing,
+                   or if the next node cannot be resolved.
+
+         - Returns: A new `RunnableConfig` updated with the new checkpoint ID and next node ID.
+         */
+        public func updateState( config: RunnableConfig, values: PartialAgentState, asNode: String? = nil ) async throws -> RunnableConfig {
+            guard let saver = compileConfig?.checkpointSaver else {
+                throw CompiledGraphError.executionError("Missing checkpoint saver!")
+            }
+            guard let checkpoint = saver.get( config: config ) else {
+                throw CompiledGraphError.executionError("Missing checkpoint!")
+            }
+
+            let branchCheckpoint = try checkpoint.updateState(values: values, channels: schema)
+
+            var nextNodeId = branchCheckpoint.nextNodeId
+            if let asNode {
+                nextNodeId = try await fetchNextNodeId( nodeId: asNode, agentState: stateFactory(branchCheckpoint.state) );
+            }
+            
+            // update checkpoint in saver
+            let newConfig = try saver.put( config: config, checkpoint: branchCheckpoint );
+
+            return newConfig.with {
+                $0.nextNodeId = nextNodeId
+            }
+        }
+
+        
+        
     }
+
 
 }

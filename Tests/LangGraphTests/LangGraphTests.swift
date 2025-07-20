@@ -589,69 +589,103 @@ func testRunningWithCheckpoint() async throws {
 
 @Test
 func testRunningWithInterruption() async throws {
+    // Create a memory-based checkpoint saver
     let saver = MemoryCheckpointSaver()
     
-    let workflow = StateGraph { BinaryOpState($0) }
+    // Build the workflow with an initial state
+    let workflow = try StateGraph { BinaryOpState($0) }
     
-    try workflow.addNode("agent_1") { state in
+    // Add node "agent_1" that returns "add1": 37
+    .addNode("agent_1") { state in
         print( "agent_1", state )
         return ["add1": 37]
     }
-    try workflow.addNode("agent_2") { state in
+    // Add node "agent_2" that returns "add2": 10
+    .addNode("agent_2") { state in
         print( "agent_2", state )
         return ["add2": 10]
     }
-    try workflow.addNode("sum") { state in
+    // Add node "sum" that sums add1 and add2
+    .addNode("sum") { state in
         print( "sum", state )
         guard let add1 = state.add1, let add2 = state.add2 else {
             throw CompiledGraphError.executionError("agent state is not valid! expect 'add1', 'add2'")
         }
-        
         return ["result": add1 + add2 ]
     }
-
-    try workflow.addEdge(sourceId: "agent_1", targetId: "agent_2")
-    try workflow.addEdge(sourceId: "agent_2", targetId: "sum")
-
-    try workflow.addEdge( sourceId: START, targetId: "agent_1")
-    try workflow.addEdge(sourceId: "sum", targetId: END )
+    // Define the edges between nodes
+    .addEdge(sourceId: "agent_1", targetId: "agent_2")
+    .addEdge(sourceId: "agent_2", targetId: "sum")
+    .addEdge( sourceId: START, targetId: "agent_1")
+    .addEdge(sourceId: "sum", targetId: END )
     
+    // Compile the workflow, instructing it to interrupt before executing "sum"
     let app = try workflow.compile( config: CompileConfig(checkpointSaver: saver, interruptionsBefore: ["sum"]) )
     
     let runnableConfig = RunnableConfig()
     
     let initValue:( lastState:BinaryOpState?, nodes:[String]) = ( nil, [] )
     
+    // Start workflow execution — it will stop before running "sum"
     let result = try await app.stream( .args([:]), config: runnableConfig ).reduce( initValue, { partialResult, output in
-        
         print( output )
-        
         return ( output.state,  partialResult.1 + [output.node ] )
     })
     
+    // Verify that "add1" and "add2" are present but not "result"
     #expect( dictionaryOfAnyEqual( ["add1": 37, "add2": 10], result.lastState!.data ) )
 
+    // Check number of checkpoints saved
     #expect( saver.list(config: runnableConfig).count == 3 )
     
     saver.list(config: runnableConfig).forEach { print( $0 ) }
     
+    // Retrieve last checkpoint and verify its position
     let lastCheckpoint = try #require( saver.last(config: runnableConfig) )
-    
     #expect( lastCheckpoint.nodeId == "agent_2" )
     #expect( lastCheckpoint.nextNodeId == "sum" )
 
+    // Resume from last checkpoint and complete execution
     let runnableConfig2 = runnableConfig.with { $0.checkpointId = lastCheckpoint.id }
-    
     let initValue2:( lastState:BinaryOpState?, nodes:[String]) = ( nil, [] )
-    
     let result2 = try await app.stream( .resume, config: runnableConfig2 ).reduce( initValue2, { partialResult, output in
-        
         print( output )
-        
         return ( output.state,  partialResult.1 + [output.node ] )
     })
 
+    // Verify that "result" has now been computed
     #expect( dictionaryOfAnyEqual(  ["add1": 37, "add2": 10, "result":  47 ],
                                     result2.lastState!.data) )
+    
+    // Release the checkpoint to clean up
+    try saver.release(config: runnableConfig2)
+
+    // Start a new run in a different thread
+    let runnableConfig3 = RunnableConfig( threadId: "T1" )
+    let initValue3:( lastState:BinaryOpState?, nodes:[String]) = ( nil, [] )
+    let result3 = try await app.stream( .args([:]), config: runnableConfig3 ).reduce( initValue3, { partialResult, output in
+        print( output )
+        return ( output.state,  partialResult.1 + [output.node ] )
+    })
+
+    // This run is also interrupted before "sum"
+    #expect( dictionaryOfAnyEqual(  ["add1": 37, "add2": 10,  ],
+                                    result3.lastState!.data) )
+    
+    // Resume the third run with updated state: change add2 from 10 to 13
+    let lastCheckpoint4 = try #require( saver.last(config: runnableConfig3) )
+    var runnableConfig4 = runnableConfig3.with { $0.checkpointId = lastCheckpoint4.id }
+    runnableConfig4 = try await app.updateState(config: runnableConfig4, values: ["add2": 13] )
+    
+    // Resume and complete execution with updated value
+    let initValue4:( lastState:BinaryOpState?, nodes:[String]) = ( nil, [] )
+    let result4 = try await app.stream( .resume, config: runnableConfig4 ).reduce( initValue4, { partialResult, output in
+        print( output )
+        return ( output.state,  partialResult.1 + [output.node ] )
+    })
+    
+    // Verify that "result" now reflects the updated input
+    #expect( dictionaryOfAnyEqual(  ["add1": 37, "add2": 13, "result": 50 ],
+                                    result4.lastState!.data) )
 }
 

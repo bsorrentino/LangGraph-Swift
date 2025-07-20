@@ -30,16 +30,18 @@ public struct Checkpoint : Equatable  {
     var nodeId: String
     var nextNodeId: String
     
-    public init(state: [String: Any], nodeId: String, nextNodeId: String) {
+    public init( state: [String: Any], nodeId: String, nextNodeId: String) {
         self.id = UUID()
         self.state = state
         self.nodeId = nodeId
         self.nextNodeId = nextNodeId
     }
 
-    mutating func updateState(values: PartialAgentState, channels: Channels) throws {
+    func updateState(values: PartialAgentState, channels: Channels) throws -> Self {
         
-        self.state = try LangGraph.updateState(currentState: self.state , partialState: values , channels: channels)
+        var editable = self
+        editable.state = try LangGraph.updateState(currentState: self.state , partialState: values , channels: channels)
+        return editable
     }
 }
 
@@ -212,7 +214,7 @@ public class MemoryCheckpointSaver: CheckpointSaver {
     public func put(config: RunnableConfig, checkpoint: Checkpoint) throws -> RunnableConfig {
         var checkpoints = checkpoints(config: config);
         
-        if let checkpointId = config.checkpointId {
+        if let checkpointId = config.checkpointId, checkpointId == checkpoint.id {
             
             checkpoints[checkpointId] = checkpoint
         }
@@ -227,6 +229,7 @@ public class MemoryCheckpointSaver: CheckpointSaver {
         
     }
     
+    @discardableResult
     public func release(config: RunnableConfig) throws -> Tag {
         let threadId = config.threadId ?? THREAD_ID_DEFAULT()
         

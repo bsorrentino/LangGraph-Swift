@@ -24,16 +24,14 @@ func testMemoryCheckpointSaver() async throws {
     #expect(checkpoints2.count==1, "Expected one checkpoint")
     #expect(config1.checkpointId == checkpoint1.id, "Expected checkpoint ID to match")
     #expect(config1.threadId == config.threadId, "Expected checkpoint threadId to match")
-    #expect(config1.nextNode == config.nextNode, "Expected checkpoint nextNode to match")
+    #expect(config1.nextNodeId == config.nextNodeId, "Expected checkpoint nextNode to match")
     
     let checkpoint2 = saver.get(config: config1)
     
     #expect( checkpoint2 != nil, "Expected non-null checkpoint")
     #expect( checkpoint2! == checkpoint1, "Expected checkpoint to match")
     
-    var checkpoint3 = checkpoint2!
-
-    try checkpoint3.updateState(values: ["prop2": "value2"], channels: [:])
+    let checkpoint3 = try checkpoint2!.updateState(values: ["prop2": "value2"], channels: [:])
 
     #expect( checkpoint2!.state.isEmpty, "Expected empty checkpoint state")
     #expect( checkpoint3.state["prop2"] as? String == "value2", "Expected checkpoint state to match")
