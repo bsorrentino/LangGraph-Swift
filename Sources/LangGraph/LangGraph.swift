@@ -430,29 +430,56 @@ public struct BaseAgentState: AgentState {
     
 }
 
+/// A configuration structure used during the compilation of a `StateGraph`.
+///
+/// `CompileConfig` allows specifying optional behaviors like saving checkpoints and defining
+/// interruptions that should pause graph execution before specific nodes.
 public struct CompileConfig {
-    var checkpointSaver: CheckpointSaver?
-    let interruptionsBefore: [String]
-    
+    /// An optional saver to persist state checkpoints.
+    public let checkpointSaver: CheckpointSaver?
+
+    /// Node identifiers where execution should pause before processing.
+    public let interruptionsBefore: [String]
+
+    /// Creates a new `CompileConfig`.
+    ///
+    /// - Parameters:
+    ///   - checkpointSaver: A `CheckpointSaver` used to persist checkpoints. Defaults to `nil`.
+    ///   - interruptionsBefore: An array of node identifiers to pause before. Defaults to `[]`.
     public init(checkpointSaver: CheckpointSaver? = nil, interruptionsBefore: [String] = []  ) {
         self.checkpointSaver = checkpointSaver
         self.interruptionsBefore = interruptionsBefore
     }
 }
 
+/// A configuration structure used to control the execution of a compiled graph.
+///
+/// `RunnableConfig` provides metadata such as thread and checkpoint identifiers to manage execution context,
+/// as well as a verbosity flag for debugging purposes.
 public struct RunnableConfig {
-    var threadId: String?;
-    var checkpointId: UUID?
-    var nextNodeId: String?
-    var verbose: Bool
-    
+    /// An optional identifier to track execution thread.
+    public var threadId: String?
+
+    /// An optional UUID of the last saved checkpoint.
+    public var checkpointId: UUID?
+
+    /// An optional identifier of the next node to execute.
+    public var nextNodeId: String?
+
+    /// A flag indicating whether verbose logging is enabled.
+    public var verbose: Bool
+
+    /// Creates a new `RunnableConfig`.
+    ///
+    /// - Parameters:
+    ///   - threadId: The thread identifier for the execution context.
+    ///   - checkpointId: The last checkpoint identifier.
+    ///   - verbose: Whether verbose logging is enabled.
     public init(threadId: String? = nil, checkpointId: UUID? = nil, verbose: Bool = false) {
         self.threadId = threadId
         self.verbose = verbose
         self.checkpointId = checkpointId
     }
-    
-    
 }
 
 extension RunnableConfig {

@@ -25,11 +25,21 @@ public struct Checkpoint : Equatable  {
         lhs.id == rhs.id
     }
     
-    let id: UUID
-    var state: [String: Any]
-    var nodeId: String
-    var nextNodeId: String
+    /// A unique identifier for the checkpoint.
+    public let id: UUID
+    /// The agent's state at the time of the checkpoint.
+    public var state: [String: Any]
+    /// The identifier of the node where the checkpoint was created.
+    public var nodeId: String
+    /// The identifier of the next node to execute after this checkpoint.
+    public var nextNodeId: String
     
+    /// Creates a new `Checkpoint` with the given state and node information.
+    ///
+    /// - Parameters:
+    ///   - state: The current agent state.
+    ///   - nodeId: The current node identifier.
+    ///   - nextNodeId: The identifier of the next node.
     public init( state: [String: Any], nodeId: String, nextNodeId: String) {
         self.id = UUID()
         self.state = state
@@ -37,7 +47,14 @@ public struct Checkpoint : Equatable  {
         self.nextNodeId = nextNodeId
     }
 
-    func updateState(values: PartialAgentState, channels: Channels) throws -> Self {
+    /// Updates the checkpoint's state with a partial update and communication channels.
+    ///
+    /// - Parameters:
+    ///   - values: A partial agent state used to update the existing state.
+    ///   - channels: A set of channels available to the agent during update.
+    /// - Returns: A new `Checkpoint` instance with the updated state.
+    /// - Throws: An error if the state update fails.
+    public func updateState(values: PartialAgentState, channels: Channels) throws -> Self {
         
         var editable = self
         editable.state = try LangGraph.updateState(currentState: self.state , partialState: values , channels: channels)
@@ -73,9 +90,13 @@ extension Checkpoint: Codable {
     }
 }
 
+/// Represents the result of a checkpoint release operation, including the thread identifier and associated checkpoints.
 public struct Tag {
-    let threadId: String
-    let checkpoints: AnyCollection<Checkpoint>
+    /// The identifier of the thread whose checkpoints were released.
+    public let threadId: String
+
+    /// A collection of checkpoints that were associated with the thread.
+    public let checkpoints: AnyCollection<Checkpoint>
 }
 
 /// A protocol that defines an interface for saving and retrieving `Checkpoint` instances.
@@ -180,6 +201,11 @@ extension Stack {
     }
 }
 
+/// An in-memory implementation of `CheckpointSaver` for managing checkpoints by thread.
+///
+/// This class stores checkpoints in a dictionary keyed by thread identifiers and provides
+/// basic operations for persisting, retrieving, listing, and releasing checkpoints.
+/// It is primarily intended for use in testing or lightweight execution environments.
 public class MemoryCheckpointSaver: CheckpointSaver {
     var checkpointsByThread: [String: Stack<Checkpoint>] = [:];
     
@@ -246,4 +272,3 @@ public class MemoryCheckpointSaver: CheckpointSaver {
         return AnyCollection(checkpoints.elements.reversed())
     }
 }
-
