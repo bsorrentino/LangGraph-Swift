@@ -1,6 +1,45 @@
 # Changelog
 
 
+"name: v4.0.0-beta1" is a release tag
+
+## [v4.0.0-beta1](https://github.com/bsorrentino/LangGraph-Swift/releases/tag/v4.0.0-beta1) (2025-07-20)
+
+### Features
+
+ *  refine pause/resume process ([d13f67362f096a8](https://github.com/bsorrentino/LangGraph-Swift/commit/d13f67362f096a89022828935c899f36be0a5e79))
+     > solve #5
+   
+ *  add support for interruptBefore configuration ([d5b0d8a2e81ede2](https://github.com/bsorrentino/LangGraph-Swift/commit/d5b0d8a2e81ede26e1b834db17e5aa5959968f77))
+     > solve #5
+   
+ *  save checkpoints during workflow execution ([4b2e7a3c749ba27](https://github.com/bsorrentino/LangGraph-Swift/commit/4b2e7a3c749ba270ecc86e703738df7ba3d0cb06))
+     > work on #5
+   
+ *  **Checkpoints.swift**  introduces Checkpoint and Tag structures along with a MemoryCheckpointSaver implementation ([fd676b90e65010c](https://github.com/bsorrentino/LangGraph-Swift/commit/fd676b90e65010cd15ee47ec876a8978855794a0))
+   
+ *  **LangGraph.swift**  introduce state update functionality ([af195a2534eb7a1](https://github.com/bsorrentino/LangGraph-Swift/commit/af195a2534eb7a14c5158785d28573fafeb27c2f))
+   
+
+
+### Documentation
+
+ -  update readme ([919ad20d3a9ac49](https://github.com/bsorrentino/LangGraph-Swift/commit/919ad20d3a9ac49f3469ccf22cf36d49581dd3bc))
+
+ -  update documentation ([bbc1cee1168f2a5](https://github.com/bsorrentino/LangGraph-Swift/commit/bbc1cee1168f2a5d737199207f8fac6585ac96f7))
+
+ -  update documentation ([728bf21895437c1](https://github.com/bsorrentino/LangGraph-Swift/commit/728bf21895437c12c1d0d5431afc97b0ef4de33b))
+
+ -  update changeme ([27bb1c001cb0b71](https://github.com/bsorrentino/LangGraph-Swift/commit/27bb1c001cb0b71c47d8edd817b3e42a630ffb32))
+
+
+### Refactor
+
+ -  remove deprecated finishPoint ([b59e14a5a96a530](https://github.com/bsorrentino/LangGraph-Swift/commit/b59e14a5a96a530d09a101a3f0aedebf2b025e9c))
+
+
+
+
 "name: v3.2.0" is a release tag
 
 ## [v3.2.0](https://github.com/bsorrentino/LangGraph-Swift/releases/tag/v3.2.0) (2024-12-05)
