@@ -208,6 +208,8 @@ extension Stack {
 /// It is primarily intended for use in testing or lightweight execution environments.
 public class MemoryCheckpointSaver: CheckpointSaver {
     var checkpointsByThread: [String: Stack<Checkpoint>] = [:];
+
+    public init() {}
     
     private func checkpoints(config: RunnableConfig ) -> Stack<Checkpoint> {
         let threadId = config.threadId ?? THREAD_ID_DEFAULT()
