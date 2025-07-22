@@ -240,7 +240,7 @@ let result = try await app.stream( .args([:]), config: runnableConfig ).reduce( 
 // This run is also interrupted before "sum"
 #expect( dictionaryOfAnyEqual(  ["add1": 37, "add2": 10 ], result.lastState!.data) )
 
-// Resume the third run with updated state: change add2 from 10 to 13
+// Resume the run with updated state: change add2 from 10 to 13
 let lastCheckpoint2 = try #require( saver.last( config: runnableConfig ) )
 var runnableConfig2 = runnableConfig.with { $0.checkpointId = lastCheckpoint2.id }
 runnableConfig2 = try await app.updateState(config: runnableConfig2, values: ["add2": 13] )
