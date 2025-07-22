@@ -1,6 +1,24 @@
 # Changelog
 
 
+"name: v4.0.0-beta2" is a release tag
+
+## [v4.0.0-beta2](https://github.com/bsorrentino/LangGraph-Swift/releases/tag/v4.0.0-beta2) (2025-07-22)
+
+
+
+### Documentation
+
+ -  update site documentation ([08cd96f96c4a1c6](https://github.com/bsorrentino/LangGraph-Swift/commit/08cd96f96c4a1c653a9a02eb93bcee03b1638e64))
+
+ -  add comments ([ca8e95885ca3757](https://github.com/bsorrentino/LangGraph-Swift/commit/ca8e95885ca3757bc6487b7117a027a8a7ca65b5))
+
+ -  update changeme ([a97b98b07310fe0](https://github.com/bsorrentino/LangGraph-Swift/commit/a97b98b07310fe0c87b4c988e91e623193bb4b2f))
+
+
+
+
+
 "name: v4.0.0-beta1" is a release tag
 
 ## [v4.0.0-beta1](https://github.com/bsorrentino/LangGraph-Swift/releases/tag/v4.0.0-beta1) (2025-07-20)
