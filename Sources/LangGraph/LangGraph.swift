@@ -199,6 +199,9 @@ public class Channel<T> : ChannelProtocol {
      */
     public func updateAttribute( _ name: String, oldValue: Any?, newValue: Any ) throws -> Any {
         guard let new = newValue as? T else {
+            // Print the type T. For agent_outcome it should be a [ChatResult]
+            print("NewVALUE: type is \(newValue.self)" )
+            print("DEBUG: Type T is \(T.self) for property \(name)")
             throw CompiledGraphError.executionError( "Channel: Type mismatch updating 'newValue' for property \(name)!")
         }
 
