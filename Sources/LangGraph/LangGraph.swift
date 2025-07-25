@@ -199,6 +199,23 @@ public class Channel<T> : ChannelProtocol {
      */
     public func updateAttribute( _ name: String, oldValue: Any?, newValue: Any ) throws -> Any {
         guard let new = newValue as? T else {
+            // Try to deserialize from JSON if T conforms to Codable
+            if let codableType = T.self as? Codable.Type,
+               let decodableType = codableType as? Decodable.Type {
+                do {
+                    // Convert to JSON data
+                    let jsonData = try JSONSerialization.data(withJSONObject: newValue)
+                    
+                    // Decode to the expected type
+                    let decoded = try JSONDecoder().decode(decodableType, from: jsonData)
+                    if let typedDecoded = decoded as? T {
+                        return typedDecoded
+                    }
+                } catch {
+                    print("JSON deserialization failed for property \(name): \(error)")
+                }
+            }
+            
             // Print the type T. For agent_outcome it should be a [ChatResult]
             print("NewVALUE: type is \(newValue.self)" )
             print("DEBUG: Type T is \(T.self) for property \(name)")
