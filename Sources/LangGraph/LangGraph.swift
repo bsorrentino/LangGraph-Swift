@@ -200,9 +200,11 @@ public class Channel<T> : ChannelProtocol {
     public func updateAttribute( _ name: String, oldValue: Any?, newValue: Any ) throws -> Any {
         var new: T
         if let _new = newValue as? T {
+            print("Updating newValue \(name) as I was able to change it to \(T.self)")
             new = _new
         } else {
             // Try to deserialize from JSON if T conforms to Decodable
+            print("Updating newValue \(name) as I was able not able to change it to \(T.self)")
             if let decodableType = T.self as? Decodable.Type {
                 do {
                     // Convert to JSON data
@@ -246,9 +248,11 @@ public class Channel<T> : ChannelProtocol {
         var old:T?
         if( oldValue != nil ) {
             if let _old = oldValue as? T {
+                print("Updating oldValue \(name) as I was able to change it to \(T.self)")
                 old = _old
             } else {
                 // Try to deserialize from JSON if T conforms to Decodable
+                print("Updating oldValue \(name) as I was able not able to change it to \(T.self)")
                 if let decodableType = T.self as? Decodable.Type {
                     do {
                         // Convert to JSON data
@@ -331,8 +335,10 @@ public class AppenderChannel<T> : Channel<[T]> {
      */
     public override func updateAttribute( _ name: String, oldValue: Any?, newValue: Any) throws -> Any {
         if let new = newValue as? T {
+            print("Updating \(name), as type \(T.self)")
             return try super.updateAttribute( name, oldValue: oldValue, newValue: [new])
         }
+        print("Updating \(name), but without type T")
         return try super.updateAttribute( name, oldValue: oldValue, newValue: newValue)
     }
 }
@@ -368,6 +374,9 @@ extension AgentState {
     /// - Parameter key: The key for which to return the corresponding value.
     /// - Returns: The value associated with `key` as type `T`, or `nil` if the key does not exist or the value cannot be cast to type `T`.
     public func value<T>(_ key: String) -> T? {
+        let type_of = type(of: data[key])
+        print("Type of data: \(type_of)")
+        print("Data: \(data[key] ?? "nil")")
         return data[key] as? T
     }
     
@@ -1190,7 +1199,7 @@ extension StateGraph {
 
                         isFirstStepAfterResume = false
                     case .resume:
-                        
+                        print("Resuming the stream now")
                         guard let saver = compileConfig?.checkpointSaver else {
                             throw CompiledGraphError.executionError("Resume request without a checkpoint saver!")
                         }
@@ -1202,6 +1211,7 @@ extension StateGraph {
                         
                         currentNodeId = startCheckpoint.nodeId
                         nextNodeId = startCheckpoint.nextNodeId
+                        print("Current nodeId: \(currentNodeId), nextNodeId \(nextNodeId)")
                         
                         isFirstStepAfterResume = true
                     }
