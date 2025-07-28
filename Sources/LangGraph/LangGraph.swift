@@ -374,10 +374,45 @@ extension AgentState {
     /// - Parameter key: The key for which to return the corresponding value.
     /// - Returns: The value associated with `key` as type `T`, or `nil` if the key does not exist or the value cannot be cast to type `T`.
     public func value<T>(_ key: String) -> T? {
-        let type_of = type(of: data[key])
-        print("Type of data: \(type_of)")
-        print("Data: \(data[key] ?? "nil")")
-        return data[key] as? T
+        guard let value = data[key] else {
+            return nil
+        }
+        
+        // First try direct casting
+        if let directValue = value as? T {
+            print("Value \(key) successfully cast to \(T.self)")
+            return directValue
+        }
+        
+        // Try to deserialize from JSON if T conforms to Decodable
+        print("Value \(key) could not be cast to \(T.self), trying JSON decoding")
+        if let decodableType = T.self as? Decodable.Type {
+            do {
+                // Convert to JSON data
+                let jsonData = try JSONSerialization.data(withJSONObject: value)
+                
+                // Decode to the expected type
+                let decoded = try JSONDecoder().decode(decodableType, from: jsonData)
+                if let typedDecoded = decoded as? T {
+                    print("Value \(key) successfully JSON decoded to \(T.self)")
+                    return typedDecoded
+                } else {
+                    print("Value: type is \(value.self)")
+                    print("DEBUG: Type T is \(T.self) for key \(key)")
+                    print("JSON decoding failed - could not cast decoded value to \(T.self)")
+                }
+            } catch {
+                print("JSON deserialization failed for key \(key): \(error)")
+                print("Value: type is \(value.self)")
+                print("DEBUG: Type T is \(T.self) for key \(key)")
+            }
+        } else {
+            print("Value: type is \(value.self)")
+            print("DEBUG: Type T is \(T.self) for key \(key)")
+            print("Type \(T.self) does not conform to Decodable")
+        }
+        
+        return nil
     }
     
 }
