@@ -1,7 +1,26 @@
 # Changelog
 
 
-"name: v4.0.0-beta3" is a release tag
+
+<!-- "name: Unreleased" is a release tag -->
+
+## [Unreleased](https://github.com/bsorrentino/LangGraph-Swift/releases/tag/Unreleased) ()
+
+
+
+### Documentation
+
+ -  update changeme ([8f7cf1de331e8b0](https://github.com/bsorrentino/LangGraph-Swift/commit/8f7cf1de331e8b0faefad0d11552b952599a955c))
+
+
+
+
+
+
+
+
+
+<!-- "name: v4.0.0-beta3" is a release tag -->
 
 ## [v4.0.0-beta3](https://github.com/bsorrentino/LangGraph-Swift/releases/tag/v4.0.0-beta3) (2025-08-01)
 
@@ -19,8 +38,17 @@
 
 
 
+### Test
 
-"name: v4.0.0-beta2" is a release tag
+ -  setup testing stuff ([31c819a6fe97196](https://github.com/bsorrentino/LangGraph-Swift/commit/31c819a6fe97196bd72c2b26dce627ad75393135))
+    > work on #10
+
+
+
+
+
+
+<!-- "name: v4.0.0-beta2" is a release tag -->
 
 ## [v4.0.0-beta2](https://github.com/bsorrentino/LangGraph-Swift/releases/tag/v4.0.0-beta2) (2025-07-22)
 
@@ -38,7 +66,11 @@
 
 
 
-"name: v4.0.0-beta1" is a release tag
+
+
+
+
+<!-- "name: v4.0.0-beta1" is a release tag -->
 
 ## [v4.0.0-beta1](https://github.com/bsorrentino/LangGraph-Swift/releases/tag/v4.0.0-beta1) (2025-07-20)
 
@@ -73,11 +105,15 @@
 ### Refactor
 
  -  remove deprecated finishPoint ([b59e14a5a96a530](https://github.com/bsorrentino/LangGraph-Swift/commit/b59e14a5a96a530d09a101a3f0aedebf2b025e9c))
+   
 
 
 
 
-"name: v3.2.0" is a release tag
+
+
+
+<!-- "name: v3.2.0" is a release tag -->
 
 ## [v3.2.0](https://github.com/bsorrentino/LangGraph-Swift/releases/tag/v3.2.0) (2024-12-05)
 
@@ -108,11 +144,28 @@
 ### Refactor
 
  -  add eternal package SwiftyACE, removing the local one ([7dc4588a0980d7d](https://github.com/bsorrentino/LangGraph-Swift/commit/7dc4588a0980d7ddcc2e577a154299e0f0e3095b))
+   
+
+
+### Test
+
+ -  add subgraph test to validate state and message accumulation ([ff736b9aebfe44a](https://github.com/bsorrentino/LangGraph-Swift/commit/ff736b9aebfe44a0ec3a2033b0e5ad449fc35c4d))
+    > The test covers various aspects such as:
+ > - Ensuring all nodes in the subgraph are visited.
+ > - Verifying the accumulation of messages across different levels of the subgraph.
+ > - Confirming that the final state of the subgraph is correctly calculated by aggregating results from nested components.
+ > work on #6 #7
+
+
+### Continuous Integration
+
+ -  add chanagelog generation script ([50c145701e46c8d](https://github.com/bsorrentino/LangGraph-Swift/commit/50c145701e46c8d022d207861c919fcd12e8b272))
+   
 
 
 
 
-"name: v3.1.0" is a release tag
+<!-- "name: v3.1.0" is a release tag -->
 
 ## [v3.1.0](https://github.com/bsorrentino/LangGraph-Swift/releases/tag/v3.1.0) (2024-08-15)
 
@@ -145,19 +198,23 @@
 ### Refactor
 
  -  **ChannelProtocol**  rename method  update to updateAttribute ([8203b8cfa63acc7](https://github.com/bsorrentino/LangGraph-Swift/commit/8203b8cfa63acc7e1a805cd9bb8ebc2ba9b67f58))
-
+   
  -  add throws to DefaultProvider ([660bd6326678dec](https://github.com/bsorrentino/LangGraph-Swift/commit/660bd6326678dec6f79eea37a589a16273932255))
+   
 
-
-### ALM 
+### ALM
 
  -  update exclude path ([aa5752b4f892652](https://github.com/bsorrentino/LangGraph-Swift/commit/aa5752b4f892652adf90cc47cedeb98660dfb05b))
-
+   
  -  add changelog update shell ([7c4de5d36b0c4be](https://github.com/bsorrentino/LangGraph-Swift/commit/7c4de5d36b0c4be40008b1f905e1d286c1ee1f01))
+   
 
 
 
-"name: v3.0.2" is a release tag
+
+
+
+<!-- "name: v3.0.2" is a release tag -->
 
 ## [v3.0.2](https://github.com/bsorrentino/LangGraph-Swift/releases/tag/v3.0.2) (2024-08-10)
 
@@ -173,11 +230,15 @@
 ### Refactor
 
  -  deprecate setEntryPoint, setConditionalEntryPoint and setFinishPoint ([286315d59dd9425](https://github.com/bsorrentino/LangGraph-Swift/commit/286315d59dd94256ae085b59260d7a05c9685681))
+   
 
 
 
 
-"name: v3.0.1" is a release tag
+
+
+
+<!-- "name: v3.0.1" is a release tag -->
 
 ## [v3.0.1](https://github.com/bsorrentino/LangGraph-Swift/releases/tag/v3.0.1) (2024-08-05)
 
@@ -193,15 +254,19 @@
 ### Refactor
 
  -  rename param name 'schema' to 'channels' ([1f449590227b3e8](https://github.com/bsorrentino/LangGraph-Swift/commit/1f449590227b3e8595a196510b98dc5e6fdf34df))
-     > langgraph.js compliance
+    > langgraph.js compliance
 
  -  rename param name 'schema' to 'channels' ([49a8a0a246ae707](https://github.com/bsorrentino/LangGraph-Swift/commit/49a8a0a246ae707f3539974791cadcc2209e3cc9))
-     > langgraph.js compliance
+    > langgraph.js compliance
 
 
 
 
-"name: v3.0.0" is a release tag
+
+
+
+
+<!-- "name: v3.0.0" is a release tag -->
 
 ## [v3.0.0](https://github.com/bsorrentino/LangGraph-Swift/releases/tag/v3.0.0) (2024-08-04)
 
@@ -229,11 +294,15 @@
 ### Refactor
 
  -  add channel management in AgentState ([2e96e05793f1748](https://github.com/bsorrentino/LangGraph-Swift/commit/2e96e05793f1748c44c7981c774fe91899019c6b))
+   
 
 
 
 
-"name: v2.0.1" is a release tag
+
+
+
+<!-- "name: v2.0.1" is a release tag -->
 
 ## [v2.0.1](https://github.com/bsorrentino/LangGraph-Swift/releases/tag/v2.0.1) (2024-07-09)
 
@@ -251,7 +320,11 @@
 
 
 
-"name: v2.0.0" is a release tag
+
+
+
+
+<!-- "name: v2.0.0" is a release tag -->
 
 ## [v2.0.0](https://github.com/bsorrentino/LangGraph-Swift/releases/tag/v2.0.0) (2024-07-08)
 
@@ -272,19 +345,23 @@
 ### Refactor
 
  -  **tests**  update class names ([61edc7ce9e51acc](https://github.com/bsorrentino/LangGraph-Swift/commit/61edc7ce9e51acc4d933da112443dae358db6847))
-
+   
  -  **AgentExecutor**  apply new names ([2a1e495e4874c33](https://github.com/bsorrentino/LangGraph-Swift/commit/2a1e495e4874c33c4abfdd5d65153571a838c6c0))
-
+   
  -  **langgraph**  rename Errors enum ([2414f647631d331](https://github.com/bsorrentino/LangGraph-Swift/commit/2414f647631d3315d54c90857cceffc8a0ce9969))
-
+   
  -  rename classes ([0800db80be61009](https://github.com/bsorrentino/LangGraph-Swift/commit/0800db80be61009e211bc9e79a90dfa1db77110e))
-     > GraphState -&gt; StateGraph
-     > Runner -&gt; CompiledGraph
+    > GraphState -&gt; StateGraph
+ > Runner -&gt; CompiledGraph
 
 
 
 
-"name: v1.2.2" is a release tag
+
+
+
+
+<!-- "name: v1.2.2" is a release tag -->
 
 ## [v1.2.2](https://github.com/bsorrentino/LangGraph-Swift/releases/tag/v1.2.2) (2024-04-20)
 
@@ -304,11 +381,15 @@
 ### Refactor
 
  -  use switch expression ([4062b742904d668](https://github.com/bsorrentino/LangGraph-Swift/commit/4062b742904d66819d4a4fb63e6a3aeff7692896))
+   
 
 
 
 
-"name: v1.2.1" is a release tag
+
+
+
+<!-- "name: v1.2.1" is a release tag -->
 
 ## [v1.2.1](https://github.com/bsorrentino/LangGraph-Swift/releases/tag/v1.2.1) (2024-03-19)
 
@@ -326,7 +407,11 @@
 
 
 
-"name: v1.2.0" is a release tag
+
+
+
+
+<!-- "name: v1.2.0" is a release tag -->
 
 ## [v1.2.0](https://github.com/bsorrentino/LangGraph-Swift/releases/tag/v1.2.0) (2024-03-19)
 
@@ -345,11 +430,15 @@
 ### Refactor
 
  -  update error message ([e2c26b224338497](https://github.com/bsorrentino/LangGraph-Swift/commit/e2c26b22433849786e374e16124995a2c6d29cca))
+   
 
 
 
 
-"name: v1.1.0" is a release tag
+
+
+
+<!-- "name: v1.1.0" is a release tag -->
 
 ## [v1.1.0](https://github.com/bsorrentino/LangGraph-Swift/releases/tag/v1.1.0) (2024-03-17)
 
@@ -391,12 +480,21 @@
 ### Refactor
 
  -  remove swift-async-algorithms deps ([fa06c7d8ba3e2fc](https://github.com/bsorrentino/LangGraph-Swift/commit/fa06c7d8ba3e2fcdffd6467dba64020fd354f9b5))
-     > work on #1
+    > work on #1
+
+
+
+### Test
+
+ -  update demo project to use stream ([bf03689998ab329](https://github.com/bsorrentino/LangGraph-Swift/commit/bf03689998ab329e91f01871a15a991b59ae23d2))
+    > work on #1
 
 
 
 
-"name: v1.0.0" is a release tag
+
+
+<!-- "name: v1.0.0" is a release tag -->
 
 ## [v1.0.0](https://github.com/bsorrentino/LangGraph-Swift/releases/tag/v1.0.0) (2024-03-16)
 
@@ -421,12 +519,15 @@
 ### Refactor
 
  -  pass a State Factory instead of State Type ([17b16a590f99789](https://github.com/bsorrentino/LangGraph-Swift/commit/17b16a590f9978947ce730fd8fc774092b12109f))
-
+   
  -  start porting LangChain agent to LangGraph ([d829826d94b9c0e](https://github.com/bsorrentino/LangGraph-Swift/commit/d829826d94b9c0e0c9b414ed419e99d550cb5979))
+   
 
-
-### ALM 
+### ALM
 
  -  add changelog script ([6ab450b9029ab20](https://github.com/bsorrentino/LangGraph-Swift/commit/6ab450b9029ab20b327e82ffaeb2ad07d07891ce))
+   
+
+
 
 
