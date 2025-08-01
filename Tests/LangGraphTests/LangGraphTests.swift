@@ -23,6 +23,29 @@ func compareAsEquatable(_ value: Any, _ expectedValue: Any) -> Bool {
     return false
 }
 
+func assertDictionaryOfAnyEqual( _ expected: [String:Any], _ current: [String:Any] ) {
+    XCTAssertEqual(expected.count, current.count, "the dictionaries have different size")
+    for (key, value) in current {
+        XCTAssertTrue( compareAsEquatable(value, expected[key]!) )
+        
+    }
+    
+}
+
+func dictionaryOfAnyEqual( _ expected: [String:Any], _ current: [String:Any] ) -> Bool {
+    if( expected.count != current.count ) {
+        return false // "the dictionaries have different size"
+    }
+    for (key, value) in current {
+        if( !compareAsEquatable(value, expected[key]!) ) {
+            return false // "values for \(key) do not match"
+        }
+    }
+    return true
+}
+
+
+
 struct BinaryOpState : AgentState {
     var data: [String : Any]
     
@@ -45,26 +68,6 @@ struct BinaryOpState : AgentState {
     }
 }
 
-func assertDictionaryOfAnyEqual( _ expected: [String:Any], _ current: [String:Any] ) {
-    XCTAssertEqual(expected.count, current.count, "the dictionaries have different size")
-    for (key, value) in current {
-        XCTAssertTrue( compareAsEquatable(value, expected[key]!) )
-        
-    }
-    
-}
-
-func dictionaryOfAnyEqual( _ expected: [String:Any], _ current: [String:Any] ) -> Bool {
-    if( expected.count != current.count ) {
-        return false // "the dictionaries have different size"
-    }
-    for (key, value) in current {
-        if( !compareAsEquatable(value, expected[key]!) ) {
-            return false // "values for \(key) do not match"
-        }
-    }
-    return true
-}
 
 // XCTest Documentation
 // https://developer.apple.com/documentation/xctest
@@ -688,4 +691,6 @@ func testRunningWithInterruption() async throws {
     #expect( dictionaryOfAnyEqual(  ["add1": 37, "add2": 13, "result": 50 ],
                                     result4.lastState!.data) )
 }
+
+
 

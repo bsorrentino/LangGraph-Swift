@@ -68,7 +68,8 @@ struct AnyEncodable: Encodable {
 
 struct AnyDecodable: Decodable {
     let value: Any
-
+    var type: Any.Type?
+    
     init(from decoder: Decoder) throws {
         let container = try decoder.singleValueContainer()
         
