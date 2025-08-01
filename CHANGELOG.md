@@ -1,6 +1,25 @@
 # Changelog
 
 
+"name: v4.0.0-beta3" is a release tag
+
+## [v4.0.0-beta3](https://github.com/bsorrentino/LangGraph-Swift/releases/tag/v4.0.0-beta3) (2025-08-01)
+
+
+### Bug Fixes
+
+ -  complex types casting of  state's attributes ([cb43df9c8cdeb45](https://github.com/bsorrentino/LangGraph-Swift/commit/cb43df9c8cdeb458676809db8d926e955dcf2867))
+     > resolve #10
+
+
+### Documentation
+
+ -  update changeme ([c80ff06ef693e62](https://github.com/bsorrentino/LangGraph-Swift/commit/c80ff06ef693e624dc1fdb8025dfa8b77b3391c8))
+
+
+
+
+
 "name: v4.0.0-beta2" is a release tag
 
 ## [v4.0.0-beta2](https://github.com/bsorrentino/LangGraph-Swift/releases/tag/v4.0.0-beta2) (2025-07-22)
