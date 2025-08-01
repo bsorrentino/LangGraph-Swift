@@ -68,7 +68,7 @@ struct AnyEncodable: Encodable {
 
 struct AnyDecodable: Decodable {
     let value: Any
-
+    
     init(from decoder: Decoder) throws {
         let container = try decoder.singleValueContainer()
         
@@ -183,6 +183,45 @@ public class Channel<T> : ChannelProtocol {
         self.`default` = defaultValueProvider
     }
     
+    private func decodeOptionalAttributeValue( _ value: Any?, withName name: String, andValueDescription description: String ) throws -> T?
+    {
+        guard let value else { return nil }
+        
+        return try decodeAttributeValue(value, withName: name, andValueDescription: description)
+    }
+    
+    private func decodeAttributeValue( _ value: Any, withName name: String, andValueDescription description: String ) throws -> T {
+        if let _value = value as? T {
+            return _value
+        }
+        
+        guard let decodableType = T.self as? Decodable.Type else {
+            throw CompiledGraphError.executionError(
+                "Channel: Type mismatch updating '\(description)' for property \(name)!")
+        }
+        
+        // Try to deserialize from JSON if T conforms to Decodable
+        let decoded: Decodable
+        do {
+            // Convert to JSON data
+            let jsonData = try JSONSerialization.data(withJSONObject: value)
+            
+            // Decode to the expected type
+            decoded = try JSONDecoder().decode(decodableType, from: jsonData)
+        } catch {
+            throw CompiledGraphError.executionError(
+                "Channel: Type mismatch updating '\(description)' for property \(name)!")
+        }
+        
+        guard let typedDecoded = decoded as? T else {
+            throw CompiledGraphError.executionError(
+                "Channel: Type mismatch updating '\(description)' for property \(name) after JSON decoding!")
+        }
+
+        return typedDecoded
+
+    }
+
     /**
      Updates the channel with a new value.
      
@@ -198,30 +237,8 @@ public class Channel<T> : ChannelProtocol {
      - Returns: The updated value.
      */
     public func updateAttribute( _ name: String, oldValue: Any?, newValue: Any ) throws -> Any {
-        guard let new = newValue as? T else {
-            throw CompiledGraphError.executionError( "Channel: Type mismatch updating 'newValue' for property \(name)!")
-        }
-
-//        var old:T?
-//        if oldValue == nil {
-//            if let `default` {
-//                old = try `default`()
-//            }
-//        }
-//        else {
-//            guard let _old = oldValue as? T else {
-//                throw CompiledGraphError.executionError( "Channel update 'oldValue' type mismatch!")
-//            }
-//            old = _old
-//        }
-        
-        var old:T?
-        if( oldValue != nil ) {
-            guard let _old = oldValue as? T else {
-                throw CompiledGraphError.executionError( "Channel update 'oldValue' type mismatch!")
-            }
-            old = _old
-        }
+        let new = try self.decodeAttributeValue(newValue, withName: name, andValueDescription: "newValue")
+        let old = try self.decodeOptionalAttributeValue(oldValue, withName: name, andValueDescription: "oldValue")
         
         if let reducer {
             return reducer( old, new )
@@ -277,8 +294,10 @@ public class AppenderChannel<T> : Channel<[T]> {
      */
     public override func updateAttribute( _ name: String, oldValue: Any?, newValue: Any) throws -> Any {
         if let new = newValue as? T {
+            print("Updating \(name), as type \(T.self)")
             return try super.updateAttribute( name, oldValue: oldValue, newValue: [new])
         }
+        print("Updating \(name), but without type T")
         return try super.updateAttribute( name, oldValue: oldValue, newValue: newValue)
     }
 }
@@ -314,7 +333,45 @@ extension AgentState {
     /// - Parameter key: The key for which to return the corresponding value.
     /// - Returns: The value associated with `key` as type `T`, or `nil` if the key does not exist or the value cannot be cast to type `T`.
     public func value<T>(_ key: String) -> T? {
-        return data[key] as? T
+        guard let value = data[key] else {
+            return nil
+        }
+        
+        // First try direct casting
+        if let directValue = value as? T {
+            print("Value \(key) successfully cast to \(T.self)")
+            return directValue
+        }
+        
+        // Try to deserialize from JSON if T conforms to Decodable
+        print("Value \(key) could not be cast to \(T.self), trying JSON decoding")
+        if let decodableType = T.self as? Decodable.Type {
+            do {
+                // Convert to JSON data
+                let jsonData = try JSONSerialization.data(withJSONObject: value)
+                
+                // Decode to the expected type
+                let decoded = try JSONDecoder().decode(decodableType, from: jsonData)
+                if let typedDecoded = decoded as? T {
+                    print("Value \(key) successfully JSON decoded to \(T.self)")
+                    return typedDecoded
+                } else {
+                    print("Value: type is \(value.self)")
+                    print("DEBUG: Type T is \(T.self) for key \(key)")
+                    print("JSON decoding failed - could not cast decoded value to \(T.self)")
+                }
+            } catch {
+                print("JSON deserialization failed for key \(key): \(error)")
+                print("Value: type is \(value.self)")
+                print("DEBUG: Type T is \(T.self) for key \(key)")
+            }
+        } else {
+            print("Value: type is \(value.self)")
+            print("DEBUG: Type T is \(T.self) for key \(key)")
+            print("Type \(T.self) does not conform to Decodable")
+        }
+        
+        return nil
     }
     
 }
@@ -1136,7 +1193,7 @@ extension StateGraph {
 
                         isFirstStepAfterResume = false
                     case .resume:
-                        
+                        print("Resuming the stream now")
                         guard let saver = compileConfig?.checkpointSaver else {
                             throw CompiledGraphError.executionError("Resume request without a checkpoint saver!")
                         }
@@ -1148,6 +1205,7 @@ extension StateGraph {
                         
                         currentNodeId = startCheckpoint.nodeId
                         nextNodeId = startCheckpoint.nextNodeId
+                        print("Current nodeId: \(currentNodeId), nextNodeId \(nextNodeId)")
                         
                         isFirstStepAfterResume = true
                     }
