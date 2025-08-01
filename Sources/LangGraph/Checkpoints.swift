@@ -145,7 +145,7 @@ public protocol CheckpointSaver {
 extension CheckpointSaver {
     @inline(__always) func THREAD_ID_DEFAULT() -> String { "$default" };
     
-    @inline(__always) func last( config: RunnableConfig ) ->  Checkpoint? {
+    @inline(__always) public func last( config: RunnableConfig ) ->  Checkpoint? {
         list( config: config ).first
     }
 }
