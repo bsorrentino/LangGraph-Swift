@@ -24,6 +24,10 @@ struct MyState: AgentState {
     var chat_history: [ChatHistory] {
         value("chat_history")!
     }
+    
+    var last_chat: ChatHistory? {
+        return value("last_chat")
+    }
 }
 
 @Test
@@ -69,7 +73,11 @@ func testIssue10() async throws {
     #expect( resultState.chat_history.count == 1 )
 
     let runnableConfig2 = try await app.updateState(config: runnableConfig,
-                                                    values: [ "chat_history": [ ChatHistory(message: "message3", id: UUID()) ]]  )
+                                                    values: [
+                                                        "chat_history": [ ChatHistory(message: "message3", id: UUID()) ],
+                                                        "last_chat": ChatHistory(message: "message3.1", id: UUID())
+                                                    ]
+    )
 
     initValue = ( nil, [] )
     
@@ -82,9 +90,8 @@ func testIssue10() async throws {
     
     resultState = try #require(result.lastState)
     
-    #expect( resultState.data.count == 1 )
+    #expect( resultState.data.count == 2 )
     #expect( resultState.chat_history.count == 3 )
-    
-
-    print(result)
+    let last_chat = try #require( resultState.last_chat )
+    #expect( last_chat.message == "message3.1" )
 }

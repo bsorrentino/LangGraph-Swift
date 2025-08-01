@@ -68,7 +68,6 @@ struct AnyEncodable: Encodable {
 
 struct AnyDecodable: Decodable {
     let value: Any
-    var type: Any.Type?
     
     init(from decoder: Decoder) throws {
         let container = try decoder.singleValueContainer()
@@ -184,6 +183,45 @@ public class Channel<T> : ChannelProtocol {
         self.`default` = defaultValueProvider
     }
     
+    private func decodeOptionalAttributeValue( _ value: Any?, withName name: String, andValueDescription description: String ) throws -> T?
+    {
+        guard let value else { return nil }
+        
+        return try decodeAttributeValue(value, withName: name, andValueDescription: description)
+    }
+    
+    private func decodeAttributeValue( _ value: Any, withName name: String, andValueDescription description: String ) throws -> T {
+        if let _value = value as? T {
+            return _value
+        }
+        
+        guard let decodableType = T.self as? Decodable.Type else {
+            throw CompiledGraphError.executionError(
+                "Channel: Type mismatch updating '\(description)' for property \(name)!")
+        }
+        
+        // Try to deserialize from JSON if T conforms to Decodable
+        let decoded: Decodable
+        do {
+            // Convert to JSON data
+            let jsonData = try JSONSerialization.data(withJSONObject: value)
+            
+            // Decode to the expected type
+            decoded = try JSONDecoder().decode(decodableType, from: jsonData)
+        } catch {
+            throw CompiledGraphError.executionError(
+                "Channel: Type mismatch updating '\(description)' for property \(name)!")
+        }
+        
+        guard let typedDecoded = decoded as? T else {
+            throw CompiledGraphError.executionError(
+                "Channel: Type mismatch updating '\(description)' for property \(name) after JSON decoding!")
+        }
+
+        return typedDecoded
+
+    }
+
     /**
      Updates the channel with a new value.
      
@@ -199,88 +237,8 @@ public class Channel<T> : ChannelProtocol {
      - Returns: The updated value.
      */
     public func updateAttribute( _ name: String, oldValue: Any?, newValue: Any ) throws -> Any {
-        var new: T
-        if let _new = newValue as? T {
-            print("Updating newValue \(name) as I was able to change it to \(T.self)")
-            new = _new
-        } else {
-            // Try to deserialize from JSON if T conforms to Decodable
-            print("Updating newValue \(name) as I was able not able to change it to \(T.self)")
-            if let decodableType = T.self as? Decodable.Type {
-                do {
-                    // Convert to JSON data
-                    let jsonData = try JSONSerialization.data(withJSONObject: newValue)
-                    
-                    // Decode to the expected type
-                    let decoded = try JSONDecoder().decode(decodableType, from: jsonData)
-                    if let typedDecoded = decoded as? T {
-                        new = typedDecoded
-                    } else {
-                        print("NewVALUE: type is \(newValue.self)" )
-                        print("DEBUG: Type T is \(T.self) for property \(name)")
-                        throw CompiledGraphError.executionError( "Channel: Type mismatch updating 'newValue' for property \(name) after JSON decoding!")
-                    }
-                } catch {
-                    print("JSON deserialization failed for property \(name): \(error)")
-                    print("NewVALUE: type is \(newValue.self)" )
-                    print("DEBUG: Type T is \(T.self) for property \(name)")
-                    throw CompiledGraphError.executionError( "Channel: Type mismatch updating 'newValue' for property \(name)!")
-                }
-            } else {
-                print("NewVALUE: type is \(newValue.self)" )
-                print("DEBUG: Type T is \(T.self) for property \(name)")
-                throw CompiledGraphError.executionError( "Channel: Type mismatch updating 'newValue' for property \(name)!")
-            }
-        }
-
-//        var old:T?
-//        if oldValue == nil {
-//            if let `default` {
-//                old = try `default`()
-//            }
-//        }
-//        else {
-//            guard let _old = oldValue as? T else {
-//                throw CompiledGraphError.executionError( "Channel update 'oldValue' type mismatch!")
-//            }
-//            old = _old
-//        }
-        
-        var old:T?
-        if( oldValue != nil ) {
-            if let _old = oldValue as? T {
-                print("Updating oldValue \(name) as I was able to change it to \(T.self)")
-                old = _old
-            } else {
-                // Try to deserialize from JSON if T conforms to Decodable
-                print("Updating oldValue \(name) as I was able not able to change it to \(T.self)")
-                if let decodableType = T.self as? Decodable.Type {
-                    do {
-                        // Convert to JSON data
-                        let jsonData = try JSONSerialization.data(withJSONObject: oldValue!)
-                        
-                        // Decode to the expected type
-                        let decoded = try JSONDecoder().decode(decodableType, from: jsonData)
-                        if let typedDecoded = decoded as? T {
-                            old = typedDecoded
-                        } else {
-                            print("Old Value: type is \(oldValue.debugDescription)" )
-                            print("DEBUG: Type T is \(T.self) for property \(name)")
-                            throw CompiledGraphError.executionError( "Channel update 'oldValue' type mismatch after JSON decoding!")
-                        }
-                    } catch {
-                        print("JSON deserialization failed for property \(name): \(error)")
-                        print("Old Value: type is \(oldValue.debugDescription)" )
-                        print("DEBUG: Type T is \(T.self) for property \(name)")
-                        throw CompiledGraphError.executionError( "Channel update 'oldValue' type mismatch!")
-                    }
-                } else {
-                    print("Old Value: type is \(oldValue.debugDescription)" )
-                    print("DEBUG: Type T is \(T.self) for property \(name)")
-                    throw CompiledGraphError.executionError( "Channel update 'oldValue' type mismatch!")
-                }
-            }
-        }
+        let new = try self.decodeAttributeValue(newValue, withName: name, andValueDescription: "newValue")
+        let old = try self.decodeOptionalAttributeValue(oldValue, withName: name, andValueDescription: "oldValue")
         
         if let reducer {
             return reducer( old, new )
